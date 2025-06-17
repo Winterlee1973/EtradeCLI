@@ -98,26 +98,13 @@ async function main() {
     r.ask = Number(r.ask);
     r.volume = Number(r.volume);
     r.distance_from_spx = spot - r.strike;
+    r.awayfromstrike = Math.abs(spot - r.strike);  // Absolute distance from SPX
     r.type = 'put';
     r.symbol = 'SPX';
   });
   
-  // Debug: show some sample data
-  console.log(`Total puts available: ${records.length}`);
-  if (records.length > 0) {
-    console.log('Sample puts (first 3 and last 3):');
-    records.slice(0, 3).forEach(r => {
-      console.log(`  Strike ${r.strike}: bid=${r.bid}, distance=${r.distance_from_spx.toFixed(0)}`);
-    });
-    console.log('  ...');
-    records.slice(-3).forEach(r => {
-      console.log(`  Strike ${r.strike}: bid=${r.bid}, distance=${r.distance_from_spx.toFixed(0)}`);
-    });
-  }
-  
   // 4) Apply filter
   const tokens = argv.filter.split(/\s+(AND|OR)\s+/i).map(t => t.trim());
-  console.log(`\nFilter tokens: ${JSON.stringify(tokens)}`);
   const matches = records.filter(r => evalFilter(r, tokens));
   if (!matches.length) {
     console.log('🔍  No contracts match your filter.');
