@@ -40,8 +40,8 @@ function evalFilter(row, tokens) {
   let result = true;
   let currentOp = 'AND';
   for (const token of tokens) {
-    if (token === 'AND' || token === 'OR') {
-      currentOp = token;
+    if (token.toUpperCase() === 'AND' || token.toUpperCase() === 'OR') {
+      currentOp = token.toUpperCase();
       continue;
     }
     const match = token.match(/(\w+)\s*(>=|<=|=|==|>|<)\s*('?[-\w.]+'?)/);
@@ -105,7 +105,11 @@ async function main() {
   // Debug: show some sample data
   console.log(`Total puts available: ${records.length}`);
   if (records.length > 0) {
-    console.log('Sample puts (last 3):');
+    console.log('Sample puts (first 3 and last 3):');
+    records.slice(0, 3).forEach(r => {
+      console.log(`  Strike ${r.strike}: bid=${r.bid}, distance=${r.distance_from_spx.toFixed(0)}`);
+    });
+    console.log('  ...');
     records.slice(-3).forEach(r => {
       console.log(`  Strike ${r.strike}: bid=${r.bid}, distance=${r.distance_from_spx.toFixed(0)}`);
     });
