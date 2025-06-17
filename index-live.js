@@ -1,0 +1,182 @@
+#!/usr/bin/env node
+import fs from 'fs';
+import path from 'path';
+import * as url from 'url';
+import { parse } from 'csv-parse/sync';
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
+import yahooFinance from 'yahoo-finance2';
+const __filename = url.fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Suppress Yahoo Finance notices
+yahooFinance.suppressNotices(['yahooSurvey']);
+
+// ----------------- CLI -----------------
+const argv = yargs(hideBin(process.argv))
+  .option('csv', { type: 'string', describe: 'Path to option chain CSV (optional - will fetch live data if not provided)' })
+  .option('filter', { type: 'string', demandOption: true, describe: 'SQL‑ish filter string' })
+  .option('dry', { type: 'boolean', default: false, describe: "Don't print order ticket" })
+  .option('expiration', { type: 'number', default: 0, describe: 'Expiration index (0 = nearest)' })
+  .example('$0 --filter "bid>=0.05 AND distance_from_spx>=300"')
+  .example('$0 --csv chain.csv --filter "bid>=0.05 AND distance_from_spx>=300"')
+  .argv;
+
+// ----------------- Helpers -------------
+function sqlCompare(a, op, b) {
+  switch (op) {
+    case '=':
+    case '==': return a == b;
+    case '>': return a > b;
+    case '>=': return a >= b;
+    case '<': return a < b;
+    case '<=': return a <= b;
+    default: return false;
+  }
+}
+
+function evalFilter(row, tokens) {
+  // tokens is array like ['bid>=0.05', 'AND', 'distance_from_spx>=300']
+  let result = true;
+  let currentOp = 'AND';
+  for (const token of tokens) {
+    if (token === 'AND' || token === 'OR') {
+      currentOp = token;
+      continue;
+    }
+    const match = token.match(/(\w+)\s*(>=|<=|=|==|>|<)\s*('?[-\w.]+'?)/);
+    if (!match) continue;
+    let [, field, op, val] = match;
+    val = val.replace(/'/g, '');
+    if (!isNaN(val)) val = Number(val);
+    const cmp = sqlCompare(row[field], op, val);
+    result = currentOp === 'AND' ? (result && cmp) : (result || cmp);
+  }
+  return result;
+}
+
+async function main() {
+  // 1) Fetch spot price first
+  console.log('📊 Fetching current SPX data...');
+  const quote = await yahooFinance.quote('^SPX');
+  const spot = quote.regularMarketPrice;
+  console.log(`\n🎯 Current SPX: $${spot.toFixed(2)}`);
+  
+  let records = [];
+  
+  if (argv.csv) {
+    // Load from CSV if provided
+    const raw = fs.readFileSync(path.resolve(argv.csv));
+    records = parse(raw, { columns: true, skip_empty_lines: true, trim: true });
+  } else {
+    // Fetch live option data from Yahoo Finance
+    console.log('📡 Fetching live option chain from Yahoo Finance...');
+    const optionInfo = await yahooFinance.options('^SPX');
+    const expiration = optionInfo.expirationDates[argv.expiration];
+    const expDate = new Date(expiration * 1000).toISOString().split('T')[0];
+    console.log(`📅 Using expiration: ${expDate}\n`);
+    
+    const chain = await yahooFinance.options('^SPX', { date: expiration });
+    const puts = chain.options[0].puts;
+    
+    // Convert Yahoo data to our format
+    records = puts.map(put => ({
+      strike: put.strike,
+      bid: put.bid || 0,
+      ask: put.ask || 0,
+      lastPrice: put.lastPrice || 0,
+      volume: put.volume || 0,
+      openInterest: put.openInterest || 0,
+      impliedVolatility: (put.impliedVolatility || 0) * 100
+    }));
+  }
+  
+  // 3) Augment each row
+  records.forEach(r => {
+    r.strike = Number(r.strike);
+    r.bid = Number(r.bid);
+    r.ask = Number(r.ask);
+    r.volume = Number(r.volume);
+    r.distance_from_spx = spot - r.strike;
+    r.type = 'put';
+    r.symbol = 'SPX';
+  });
+  
+  // Debug: show some sample data
+  console.log(`Total puts available: ${records.length}`);
+  if (records.length > 0) {
+    console.log('Sample puts (last 3):');
+    records.slice(-3).forEach(r => {
+      console.log(`  Strike ${r.strike}: bid=${r.bid}, distance=${r.distance_from_spx.toFixed(0)}`);
+    });
+  }
+  
+  // 4) Apply filter
+  const tokens = argv.filter.split(/\s+(AND|OR)\s+/i).map(t => t.trim());
+  console.log(`\nFilter tokens: ${JSON.stringify(tokens)}`);
+  const matches = records.filter(r => evalFilter(r, tokens));
+  if (!matches.length) {
+    console.log('🔍  No contracts match your filter.');
+    return;
+  }
+  
+  // 5) Pick highest strike (closest to spot)
+  matches.sort((a, b) => b.strike - a.strike);
+  const best = matches[0];
+  
+  // Find adjacent strikes
+  const allPuts = records.sort((a, b) => a.strike - b.strike);
+  const bestIndex = allPuts.findIndex(p => p.strike === best.strike);
+  const below = bestIndex > 0 ? allPuts[bestIndex - 1] : null;
+  const above = bestIndex < allPuts.length - 1 ? allPuts[bestIndex + 1] : null;
+  
+  console.log(`Found ${matches.length} matching puts\n`);
+  console.log('📈 Option Chain Context:');
+  console.log('Strike  | Bid    | Ask    | Last   | Volume | Distance | Match');
+  console.log('--------|--------|--------|--------|--------|----------|------');
+  
+  // Show below strike
+  if (below) {
+    console.log(
+      `${below.strike.toString().padEnd(7)} | ` +
+      `${below.bid.toFixed(2).padStart(6)} | ` +
+      `${below.ask.toFixed(2).padStart(6)} | ` +
+      `${(below.lastPrice || 0).toFixed(2).padStart(6)} | ` +
+      `${below.volume.toString().padStart(6)} | ` +
+      `${below.distance_from_spx.toFixed(0).padStart(8)} | `
+    );
+  }
+  
+  // Show selected strike (highlighted)
+  console.log(
+    `${best.strike.toString().padEnd(7)} | ` +
+    `${best.bid.toFixed(2).padStart(6)} | ` +
+    `${best.ask.toFixed(2).padStart(6)} | ` +
+    `${(best.lastPrice || 0).toFixed(2).padStart(6)} | ` +
+    `${best.volume.toString().padStart(6)} | ` +
+    `${best.distance_from_spx.toFixed(0).padStart(8)} | ← SELECTED`
+  );
+  
+  // Show above strike
+  if (above) {
+    console.log(
+      `${above.strike.toString().padEnd(7)} | ` +
+      `${above.bid.toFixed(2).padStart(6)} | ` +
+      `${above.ask.toFixed(2).padStart(6)} | ` +
+      `${(above.lastPrice || 0).toFixed(2).padStart(6)} | ` +
+      `${above.volume.toString().padStart(6)} | ` +
+      `${above.distance_from_spx.toFixed(0).padStart(8)} | `
+    );
+  }
+  
+  if (!argv.dry) {
+    console.log('\n💸 Order preview');
+    console.log(`    SELL 1 SPX ${best.strike}P`);
+    console.log(`    LIMIT ${best.bid}   Credit $${(best.bid * 100).toFixed(2)}`);
+  }
+}
+
+main().catch(err => {
+  console.error(err);
+  process.exit(1);
+});
