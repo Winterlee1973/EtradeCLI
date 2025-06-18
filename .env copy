@@ -1,0 +1,26 @@
+# Slack Bot Configuration
+SLACK_BOT_TOKEN=xoxb-9071070462802-9056777143319-EuWE3L3SobS0cPwUglzmN76t
+SLACK_SIGNING_SECRET=d37e3f386e810fc5523bbc4db62974df
+SLACK_APP_TOKEN=xapp-1-A092FUHNTBK-9071656932580-ac8333649d9cfc8beee88c69e1f7f1bd8788f21095b280d0d72c0782fb3997db
+SLACK_ALERT_CHANNEL=#trading
+
+# Claude AI Configuration  
+CLAUDE_API_KEY=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
+
+# Environment
+NODE_ENV=production
+
+# Instructions:
+# 1. Copy this file to .env
+# 2. Fill in your actual tokens
+# 3. Never commit .env to git (it's in .gitignore)
+#
+# Get Slack tokens from: https://api.slack.com/apps
+# Get Claude API key from: https://console.anthropic.com
+#
+# Slack Setup:
+# - Create app at api.slack.com/apps
+# - Enable Socket Mode for SLACK_APP_TOKEN  
+# - Add OAuth scopes: chat:write, commands, app_mentions:read, channels:read
+# - Install app to workspace for SLACK_BOT_TOKEN
+# - Get signing secret from Basic Information page

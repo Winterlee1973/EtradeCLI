@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { App } from '@slack/bolt';
+import pkg from '@slack/bolt';
+const { App } = pkg;
 import dotenv from 'dotenv';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -17,6 +18,12 @@ const app = new App({
   socketMode: true,
   appToken: process.env.SLACK_APP_TOKEN
 });
+
+// Debug environment variables
+console.log('🔧 Checking tokens...');
+console.log('Bot Token starts with:', process.env.SLACK_BOT_TOKEN?.substring(0, 10) + '...');
+console.log('App Token starts with:', process.env.SLACK_APP_TOKEN?.substring(0, 10) + '...');
+console.log('Signing Secret length:', process.env.SLACK_SIGNING_SECRET?.length);
 
 // Trading command patterns
 const TRADING_COMMANDS = {
@@ -90,28 +97,40 @@ function parseMessage(text) {
 // Handle messages
 app.message(async ({ message, say }) => {
   try {
+    console.log('📨 Received message:', message.text);
+    console.log('👤 From user:', message.user);
+    console.log('📍 Channel:', message.channel);
+    
     // Skip bot messages
-    if (message.subtype === 'bot_message') return;
+    if (message.subtype === 'bot_message') {
+      console.log('🤖 Skipping bot message');
+      return;
+    }
     
     const parsed = parseMessage(message.text);
+    console.log('🔍 Parsed as:', parsed.type, parsed.command || parsed.message);
     
     if (parsed.type === 'trading') {
-      // Execute trading command
+      console.log('💼 Executing trading command:', parsed.command);
       const result = await executeCommand(parsed.command);
+      console.log('✅ Command result length:', result.length);
       await say({
         text: `\`\`\`\n${result}\n\`\`\``,
         thread_ts: message.ts
       });
+      console.log('📤 Sent trading response');
     } else {
-      // Send to Claude
+      console.log('🤖 Sending to Claude:', parsed.message);
       const response = await claudeChat(parsed.message, message.user);
+      console.log('🎯 Claude response length:', response.length);
       await say({
         text: response,
         thread_ts: message.ts
       });
+      console.log('📤 Sent Claude response');
     }
   } catch (error) {
-    console.error('Error handling message:', error);
+    console.error('❌ Error handling message:', error);
     await say(`Error: ${error.message}`);
   }
 });
