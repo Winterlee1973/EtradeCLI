@@ -14,7 +14,11 @@
     "csv-parse": "^5.5.0",
     "node-fetch": "^3.3.2",
     "yargs": "^17.7.2",
-    "yahoo-finance2": "^2.3.1"
+    "yahoo-finance2": "^2.3.1",
+    "@slack/bolt": "^4.0.0",
+    "@anthropic-ai/sdk": "^0.24.3",
+    "node-cron": "^3.0.3",
+    "dotenv": "^16.4.5"
   },
   "engines": {
     "node": ">=18"
