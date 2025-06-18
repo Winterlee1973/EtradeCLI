@@ -2,13 +2,13 @@
   "name": "etrade-auto-trader-terminal",
   "version": "0.1.0",
   "description": "Terminal-based SPX option screener & mock order simulator using Node.js",
-  "main": "index.js",
+  "main": "spx-put-seller.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js --help"
+    "start": "node spx-put-seller.js --help"
   },
   "bin": {
-    "autotrade": "index.js"
+    "autotrade": "./spx-put-seller.js"
   },
   "dependencies": {
     "csv-parse": "^5.5.0",
