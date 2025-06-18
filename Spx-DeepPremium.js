@@ -105,13 +105,18 @@ async function main() {
   // Find best opportunity (highest premium if any)
   let best = null;
   let bestIndex = -1;
+  
+  // POTENTIAL ORDER SUMMARY
+  console.log('🎯 POTENTIAL ORDER SUMMARY:');
   if (opportunities.length > 0) {
     opportunities.sort((a, b) => b.bid - a.bid);
     best = opportunities[0];
     bestIndex = allPuts.findIndex(p => p.strike === best.strike);
-    console.log(`🎯 Found ${opportunities.length} Deep OTM Premium Opportunities\n`);
+    console.log(`✅ YES - ${opportunities.length} execution-ready opportunities found`);
+    console.log(`   Best: ${best.strike} strike, $${best.bid.toFixed(2)} bid (${best.distance_from_spx.toFixed(0)} points out)`);
+    console.log(`   Credit: $${(best.bid * 100).toFixed(0)} per contract\n`);
   } else {
-    console.log(`🔍 No deep OTM opportunities found with:`);
+    console.log(`❌ NO - No opportunities meet criteria:`);
     console.log(`   • Minimum distance: ${argv.minDistance} points`);
     console.log(`   • Minimum premium: $${argv.minPremium.toFixed(2)}\n`);
     
