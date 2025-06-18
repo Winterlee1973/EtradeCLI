@@ -32,33 +32,24 @@ async function getQuote(symbol) {
   
   const yahooSymbol = symbolMap[symbol.toUpperCase()] || symbol;
   
-  console.log(`\n📊 Fetching quote for ${yahooSymbol}...`);
-  
-  const startTime = Date.now();
-  
   try {
     const quote = await yahooFinance.quote(yahooSymbol);
-    const queryTime = Date.now() - startTime;
     
-    console.log(`\n✓ ${quote.longName || quote.shortName || quote.symbol}`);
-    console.log(`  Symbol: ${quote.symbol}`);
-    console.log(`  Price: $${quote.regularMarketPrice.toFixed(2)}`);
-    console.log(`  Change: ${quote.regularMarketChange >= 0 ? '+' : ''}${quote.regularMarketChange.toFixed(2)} (${quote.regularMarketChangePercent >= 0 ? '+' : ''}${quote.regularMarketChangePercent.toFixed(2)}%)`);
-    console.log(`  Day Range: $${quote.regularMarketDayLow.toFixed(2)} - $${quote.regularMarketDayHigh.toFixed(2)}`);
-    console.log(`  Volume: ${(quote.regularMarketVolume || 0).toLocaleString()}`);
-    console.log(`\n⏱️  Query time: ${queryTime}ms`);
-    console.log(`📅 Timestamp: ${new Date().toLocaleString('en-US', { 
-      year: 'numeric', 
+    console.log(`${quote.longName || quote.shortName || quote.symbol}`);
+    console.log(`${quote.symbol}: $${quote.regularMarketPrice.toFixed(2)}`);
+    console.log(`${quote.regularMarketChange >= 0 ? '+' : ''}${quote.regularMarketChange.toFixed(2)} (${quote.regularMarketChangePercent >= 0 ? '+' : ''}${quote.regularMarketChangePercent.toFixed(2)}%)`);
+    console.log(`${new Date().toLocaleString('en-US', { 
       month: '2-digit', 
       day: '2-digit', 
+      year: 'numeric',
       hour: '2-digit', 
       minute: '2-digit', 
       second: '2-digit',
       hour12: true 
-    })}\n`);
+    })}`);
     
   } catch (error) {
-    console.error(`\n❌ Error fetching quote for ${yahooSymbol}:`, error.message);
+    console.error(`Error: ${error.message}`);
     process.exit(1);
   }
 }

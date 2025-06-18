@@ -118,45 +118,39 @@ async function main() {
   // Find adjacent strikes
   const allPuts = records.sort((a, b) => a.strike - b.strike);
   const bestIndex = allPuts.findIndex(p => p.strike === best.strike);
-  const below = bestIndex > 0 ? allPuts[bestIndex - 1] : null;
-  const above = bestIndex < allPuts.length - 1 ? allPuts[bestIndex + 1] : null;
   
   console.log(`Found ${matches.length} matching puts\n`);
+  
+  // Display timestamp
+  console.log(`📅 Timestamp: ${new Date().toLocaleString('en-US', { 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit', 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit',
+    hour12: true 
+  })}\n`);
+  
   console.log('📈 Option Chain Context:');
   console.log('Strike  | Bid    | Ask    | Last   | Volume | Distance | Match');
   console.log('--------|--------|--------|--------|--------|----------|------');
   
-  // Show below strike
-  if (below) {
-    console.log(
-      `${below.strike.toString().padEnd(7)} | ` +
-      `${below.bid.toFixed(2).padStart(6)} | ` +
-      `${below.ask.toFixed(2).padStart(6)} | ` +
-      `${(below.lastPrice || 0).toFixed(2).padStart(6)} | ` +
-      `${below.volume.toString().padStart(6)} | ` +
-      `${below.distance_from_spx.toFixed(0).padStart(8)} | `
-    );
-  }
+  // Show 5 strikes below
+  const startIdx = Math.max(0, bestIndex - 5);
+  const endIdx = Math.min(allPuts.length - 1, bestIndex + 5);
   
-  // Show selected strike (highlighted)
-  console.log(
-    `${best.strike.toString().padEnd(7)} | ` +
-    `${best.bid.toFixed(2).padStart(6)} | ` +
-    `${best.ask.toFixed(2).padStart(6)} | ` +
-    `${(best.lastPrice || 0).toFixed(2).padStart(6)} | ` +
-    `${best.volume.toString().padStart(6)} | ` +
-    `${best.distance_from_spx.toFixed(0).padStart(8)} | ← SELECTED`
-  );
-  
-  // Show above strike
-  if (above) {
+  for (let i = startIdx; i <= endIdx; i++) {
+    const put = allPuts[i];
+    const isSelected = i === bestIndex;
     console.log(
-      `${above.strike.toString().padEnd(7)} | ` +
-      `${above.bid.toFixed(2).padStart(6)} | ` +
-      `${above.ask.toFixed(2).padStart(6)} | ` +
-      `${(above.lastPrice || 0).toFixed(2).padStart(6)} | ` +
-      `${above.volume.toString().padStart(6)} | ` +
-      `${above.distance_from_spx.toFixed(0).padStart(8)} | `
+      `${put.strike.toString().padEnd(7)} | ` +
+      `${put.bid.toFixed(2).padStart(6)} | ` +
+      `${put.ask.toFixed(2).padStart(6)} | ` +
+      `${(put.lastPrice || 0).toFixed(2).padStart(6)} | ` +
+      `${put.volume.toString().padStart(6)} | ` +
+      `${put.distance_from_spx.toFixed(0).padStart(8)} | ` +
+      (isSelected ? '← SELECTED' : '')
     );
   }
   
