@@ -132,8 +132,7 @@ app.message(async ({ message, say }) => {
       }
       
       await say({
-        text: formattedResult,
-        thread_ts: message.ts
+        text: formattedResult
       });
       console.log('📤 Sent trading response to Slack');
     } else {
@@ -144,8 +143,7 @@ app.message(async ({ message, say }) => {
       console.log(response.substring(0, 300) + (response.length > 300 ? '...' : ''));
       console.log('─'.repeat(50));
       await say({
-        text: response,
-        thread_ts: message.ts
+        text: response
       });
       console.log('📤 Sent Claude response to Slack');
     }
@@ -185,8 +183,7 @@ app.event('app_mention', async ({ event, say }) => {
       
       await say({
         text: formattedResult,
-        channel: event.channel,
-        thread_ts: event.ts
+        channel: event.channel
       });
       console.log('📤 Sent trading response to Slack (mention)');
     } else {
@@ -198,8 +195,7 @@ app.event('app_mention', async ({ event, say }) => {
       console.log('─'.repeat(50));
       await say({
         text: response,
-        channel: event.channel,
-        thread_ts: event.ts
+        channel: event.channel
       });
       console.log('📤 Sent Claude response to Slack (mention)');
     }
@@ -243,15 +239,24 @@ app.event('app_mention', async ({ event, say }) => {
     console.log('   - SDP Today: 9:40 AM EST');
     console.log('   - SDP Tomorrow: 3:50 PM EST');
     
-    // Keep alive check every 30 seconds
+    // Keep alive check every 15 minutes
     setInterval(async () => {
+      const timestamp = new Date().toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
       try {
         await app.client.auth.test({ token: process.env.SLACK_BOT_TOKEN });
-        console.log('💓 Bot heartbeat OK');
+        console.log(`💓 Bot heartbeat OK - ${timestamp}`);
       } catch (error) {
-        console.log('💔 Bot heartbeat failed:', error.message);
+        console.log(`💔 Bot heartbeat failed - ${timestamp}:`, error.message);
       }
-    }, 30000);
+    }, 900000); // 15 minutes = 900000ms
     
   } catch (error) {
     console.error('❌ Failed to start bot:', error.message);

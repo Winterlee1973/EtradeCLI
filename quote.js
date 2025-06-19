@@ -1,10 +1,8 @@
 #!/usr/bin/env node
-import yahooFinance from 'yahoo-finance2';
+import yahooFinance from './yahoo-finance-quiet.js';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-// Suppress Yahoo Finance notices
-yahooFinance.suppressNotices(['yahooSurvey']);
 
 const argv = yargs(hideBin(process.argv))
   .usage('Usage: $0 <symbol>')

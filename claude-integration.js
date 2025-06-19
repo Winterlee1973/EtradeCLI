@@ -38,6 +38,8 @@ export async function claudeChat(message, userId) {
     // Get or create conversation history for user
     if (!conversations.has(userId)) {
       conversations.set(userId, []);
+      // Return hardcoded intro for new users
+      return '📊 TRADING BOT READY\nCommands: q TSLA | q MSFT | sdp today | sdp tomorrow';
     }
     
     const history = conversations.get(userId);
