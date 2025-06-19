@@ -130,7 +130,7 @@ Yahoo Finance API sometimes returns invalid dates. The data is usually still val
 - **SPX Options**: Trade until 4:15 PM ET (0DTE)
 - **Dime bid**: $0.10 premium
 - **Distance**: Points between current SPX price and strike
-- **Put selling**: Collect premium, obligated to buy at strike if assigned
+- **Deep premium**: High-probability trades far out of the money
 
 ## Next Steps
 

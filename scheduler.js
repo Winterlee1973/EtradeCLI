@@ -91,40 +91,6 @@ export function startScheduler(slackApp) {
     timezone: 'America/New_York'
   });
   
-  // Optional: Market open alert
-  cron.schedule('30 9 * * 1-5', async () => {
-    console.log('🔔 Sending market open alert...');
-    try {
-      const { stdout } = await execAsync('node run.js q ^SPX');
-      
-      await slackApp.client.chat.postMessage({
-        token: process.env.SLACK_BOT_TOKEN,
-        channel: CHANNEL,
-        text: '🔔 *Market Open - SPX Level*',
-        blocks: [
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: '🔔 *Market Open - SPX Level*'
-            }
-          },
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `\`\`\`\n${stdout}\n\`\`\``
-            }
-          }
-        ]
-      });
-    } catch (error) {
-      console.error('❌ Market open alert failed:', error);
-    }
-  }, {
-    timezone: 'America/New_York'
-  });
-  
   // Test alert (runs every minute for testing - remove in production)
   if (process.env.NODE_ENV === 'development') {
     cron.schedule('* * * * *', async () => {
@@ -135,5 +101,4 @@ export function startScheduler(slackApp) {
   console.log('📅 Scheduler initialized with Eastern Time:');
   console.log('   🌅 Morning Alert: 9:40 AM EST (SDP Today)');
   console.log('   🌆 Afternoon Alert: 3:50 PM EST (SDP Tomorrow)');
-  console.log('   🔔 Market Open: 9:30 AM EST (SPX Level)');
 }

@@ -4,23 +4,21 @@ import { spawn } from 'child_process';
 
 // This is a universal runner to minimize Claude approval prompts
 // Usage: node run.js quote TSLA
-//        node run.js spx-put-seller --filter "bid>=0.10"
+//        node run.js sdp today
 
 const [command, ...args] = process.argv.slice(2);
 
 const commands = {
   'quote': ['node', 'quote.js'],
   'q': ['node', 'quote.js'],
-  'spx': ['node', 'spx-put-seller.js'],
-  'spx-put-seller': ['node', 'spx-put-seller.js'],
-  'puts': ['node', 'spx-put-seller.js'],
-  'sps': ['node', 'spx-put-seller.js'],
+  'sdp': ['node', 'spx-deeppremium.js'],
+  'deep': ['node', 'spx-deeppremium.js'],
 };
 
 if (!command || !commands[command]) {
   console.log('Available commands:');
   console.log('  quote (or q) <symbol>     - Get stock quote');
-  console.log('  spx, puts, sps <args>     - Run SPX put seller');
+  console.log('  sdp, deep <args>          - Run SPX deep premium scanner');
   process.exit(1);
 }
 

@@ -29,7 +29,6 @@ console.log('Signing Secret length:', process.env.SLACK_SIGNING_SECRET?.length);
 // Trading command patterns
 const TRADING_COMMANDS = {
   quote: /^(q|quote)\s+([A-Z]{1,5})$/i,
-  spx_puts: /^(sps|spx|puts)(\s+.*)?$/i,
   deep_premium: /^(sdp|deep)\s+(today|tomorrow)$/i,
   deep_premium_custom: /^sdp\s+(\d+)\s+points?\s+(\d+\.?\d*)\s+premium$/i
 };
@@ -41,7 +40,20 @@ async function executeCommand(command) {
       cwd: process.cwd(),
       timeout: 30000 
     });
-    return stdout || stderr;
+    
+    // Filter out Yahoo Finance cookie/crumb fetching messages
+    const output = stdout || stderr;
+    const lines = output.split('\n');
+    const filteredLines = lines.filter(line => {
+      const lowerLine = line.toLowerCase();
+      return !lowerLine.includes('fetching crumb') && 
+             !lowerLine.includes('fetching cookies') &&
+             !lowerLine.includes('cookie') &&
+             !lowerLine.includes('crumb') &&
+             !line.startsWith('Done fetching');
+    });
+    
+    return filteredLines.join('\n');
   } catch (error) {
     return `Error: ${error.message}`;
   }
@@ -60,13 +72,6 @@ function parseMessage(text) {
     };
   }
   
-  // SPX puts command
-  if (TRADING_COMMANDS.spx_puts.test(cleanText)) {
-    return {
-      type: 'trading',
-      command: `node run.js sps`
-    };
-  }
   
   // Deep premium commands
   if (TRADING_COMMANDS.deep_premium.test(cleanText)) {

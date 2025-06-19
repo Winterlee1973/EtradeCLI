@@ -6,7 +6,6 @@ Slack integration for real-time trading commands and Claude AI conversations.
 
 ### 🤖 Trading Commands
 - **Quotes**: `q TSLA` or `quote AAPL`
-- **SPX Puts**: `sps` or `spx` (uses spx-put-seller.js default settings)
 - **Deep Premium**: `sdp today` or `sdp tomorrow`
 
 ### 🧠 Claude AI Integration
@@ -18,7 +17,6 @@ Slack integration for real-time trading commands and Claude AI conversations.
 ### ⏰ Automated Alerts
 - **9:40 AM EST**: Daily SDP Today scan (0DTE opportunities)
 - **3:50 PM EST**: Daily SDP Tomorrow scan (1DTE setup)
-- **9:30 AM EST**: Market open SPX level
 
 ## Setup
 
@@ -70,7 +68,6 @@ npm run dev
 ### In Slack:
 ```
 q SPX                    # Get SPX quote
-sps                      # Find put selling opportunities (uses script defaults)
 sdp today                # Scan for 0DTE deep premium
 sdp tomorrow             # Scan for 1DTE deep premium
 
@@ -85,14 +82,12 @@ Analyze the VIX spike
 | Command | Description | Example |
 |---------|-------------|---------|
 | `q SYMBOL` | Get quote | `q TSLA` |
-| `sps` | SPX put seller | `sps` |
 | `sdp today` | Deep premium 0DTE | `sdp today` |
 | `sdp tomorrow` | Deep premium 1DTE | `sdp tomorrow` |
 | `@bot question` | Ask Claude | `@bot What's the market outlook?` |
 
 ## Alerts Schedule
 
-- **9:30 AM EST**: Market open SPX level
 - **9:40 AM EST**: SDP Today scan (0DTE opportunities)
 - **3:50 PM EST**: SDP Tomorrow scan (1DTE setup)
 

@@ -9,8 +9,12 @@ import yahooFinance from 'yahoo-finance2';
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Suppress Yahoo Finance notices
+// Suppress Yahoo Finance notices and debug output
 yahooFinance.suppressNotices(['yahooSurvey']);
+
+// Redirect console output temporarily to suppress cookie/crumb messages
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
 
 // ----------------- CLI -----------------
 const argv = yargs(hideBin(process.argv))
@@ -42,6 +46,26 @@ if (!argv.strategy) {
 }
 
 async function main() {
+  // Temporarily suppress console output during Yahoo Finance operations
+  console.log = () => {};
+  console.error = () => {};
+  
+  // Fetch data silently
+  let quote, optionInfo;
+  try {
+    quote = await yahooFinance.quote('^SPX');
+    optionInfo = await yahooFinance.options('^SPX');
+  } catch (err) {
+    // Restore console
+    console.log = originalConsoleLog;
+    console.error = originalConsoleError;
+    throw err;
+  }
+  
+  // Restore console output
+  console.log = originalConsoleLog;
+  console.error = originalConsoleError;
+  
   // Display timestamp
   console.log(`📅 Timestamp: ${new Date().toLocaleString('en-US', { 
     year: 'numeric', 
@@ -60,13 +84,11 @@ async function main() {
     console.log(`   Criteria: ${argv.minDistance}+ points out, $${argv.minPremium.toFixed(2)}+ bid\n`);
   }
 
-  // 1) Fetch spot price first
-  const quote = await yahooFinance.quote('^SPX');
+  // 1) Use already fetched quote
   const spot = quote.regularMarketPrice;
   console.log(`🎯 Current SPX: $${spot.toFixed(2)}\n`);
   
-  // 2) Fetch live option data from Yahoo Finance
-  const optionInfo = await yahooFinance.options('^SPX');
+  // 2) Use already fetched option info
   const expiration = optionInfo.expirationDates[argv.expiration];
   const expDate = new Date(expiration * 1000);
   const expDateStr = expDate.toLocaleDateString('en-US', { 
@@ -76,7 +98,22 @@ async function main() {
   });
   console.log(`📅 Searching expiration: ${expDateStr}\n`);
   
-  const chain = await yahooFinance.options('^SPX', { date: expiration });
+  // Suppress console output again for chain fetch
+  console.log = () => {};
+  console.error = () => {};
+  
+  let chain;
+  try {
+    chain = await yahooFinance.options('^SPX', { date: expiration });
+  } catch (err) {
+    console.log = originalConsoleLog;
+    console.error = originalConsoleError;
+    throw err;
+  }
+  
+  // Restore console output
+  console.log = originalConsoleLog;
+  console.error = originalConsoleError;
   const puts = chain.options[0].puts;
   
   // Convert Yahoo data to our format
