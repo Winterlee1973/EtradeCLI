@@ -54,6 +54,7 @@ const argv = yargs(hideBin(process.argv))
   })
   .option('min-distance', { type: 'number', describe: 'Minimum distance from SPX (points)' })
   .option('min-premium', { type: 'number', describe: 'Minimum bid premium' })
+  .option('target-bid', { type: 'number', describe: 'Target bid amount to find closest strike' })
   .option('expiration', { type: 'number', describe: 'Expiration index (0 = today, 1 = tomorrow)' })
   .example('$0 0', 'Scan 0DTE (200 points, $0.80 bid)')
   .example('$0 1', 'Scan 1DTE (300 points, $2.00 bid)')
@@ -195,7 +196,11 @@ async function main() {
   console.log(`⏰ Time: ${timestamp}`);
   console.log(`📈 SPX: ${spot.toFixed(2)} (${marketStatus})`);
   console.log(`📅 Exp: ${expDateStr} ${argv.strategy === '1dte' ? dayNote : ''}`);
-  console.log(`🎲 Criteria: ${argv.minDistance}pts/${argv.minPremium.toFixed(2)}bid`);
+  if (argv.targetBid) {
+    console.log(`🎯 Target: $${argv.targetBid.toFixed(2)} bid`);
+  } else {
+    console.log(`🎲 Criteria: ${argv.minDistance}pts/${argv.minPremium.toFixed(2)}bid`);
+  }
   console.log('');
   
   // Fetch option chain
@@ -228,35 +233,74 @@ async function main() {
   // Sort all puts by strike for grid display
   const allPuts = records.sort((a, b) => a.strike - b.strike);
   
-  // Find OTM strikes with minimum premium (center display around these)
-  const premiumStrikes = records.filter(r => 
-    r.bid >= argv.minPremium && 
-    r.distance_from_spx > 0  // Only OTM puts (below current SPX)
-  );
-  
+  // Handle target bid mode vs regular scanning
   let best = null;
   let bestIndex = -1;
   
-  if (premiumStrikes.length > 0) {
-    // Sort by highest premium and find best
-    premiumStrikes.sort((a, b) => b.bid - a.bid);
-    best = premiumStrikes[0];
+  if (argv.targetBid) {
+    // TARGET BID MODE: Find lowest strike with exact target bid amount
+    const targetBid = argv.targetBid;
     
-    // Center display around the target distance area where we expect to find qualifying strikes
-    const targetStrike = Math.floor((spot - argv.minDistance) / 5) * 5;
-    bestIndex = allPuts.findIndex(p => p.strike >= targetStrike);
-    if (bestIndex === -1) bestIndex = allPuts.length - 5;
-    if (bestIndex < 4) bestIndex = 4;
+    // Find all puts with exact target bid, then pick lowest strike
+    const exactMatches = records.filter(put => put.bid === targetBid);
     
-    // Check if any premium strikes meet distance criteria for opportunities
-    opportunities.length = 0; // Clear and rebuild based on both criteria
-    opportunities.push(...premiumStrikes.filter(r => r.distance_from_spx >= argv.minDistance));
+    if (exactMatches.length > 0) {
+      // Sort by strike and take the lowest (first)
+      exactMatches.sort((a, b) => a.strike - b.strike);
+      best = exactMatches[0];
+      bestIndex = allPuts.findIndex(p => p.strike === best.strike);
+      
+      // In target bid mode, the "opportunity" is the exact match
+      opportunities.push(best);
+    } else {
+      // Fallback: if no exact match, find closest bid amount
+      let closestPut = null;
+      let smallestDiff = Infinity;
+      
+      records.forEach(put => {
+        if (put.bid > 0) {
+          const diff = Math.abs(put.bid - targetBid);
+          if (diff < smallestDiff) {
+            smallestDiff = diff;
+            closestPut = put;
+          }
+        }
+      });
+      
+      if (closestPut) {
+        best = closestPut;
+        bestIndex = allPuts.findIndex(p => p.strike === closestPut.strike);
+        opportunities.push(closestPut);
+      }
+    }
   } else {
-    // No premium strikes found, show around target distance area
-    const targetStrike = Math.floor((spot - argv.minDistance) / 5) * 5;
-    bestIndex = allPuts.findIndex(p => p.strike >= targetStrike);
-    if (bestIndex === -1) bestIndex = allPuts.length - 5;
-    if (bestIndex < 4) bestIndex = 4;
+    // REGULAR MODE: Find strikes with minimum premium
+    const premiumStrikes = records.filter(r => 
+      r.bid >= argv.minPremium && 
+      r.distance_from_spx > 0  // Only OTM puts (below current SPX)
+    );
+    
+    if (premiumStrikes.length > 0) {
+      // Sort by highest premium and find best
+      premiumStrikes.sort((a, b) => b.bid - a.bid);
+      best = premiumStrikes[0];
+      
+      // Center display around the target distance area where we expect to find qualifying strikes
+      const targetStrike = Math.floor((spot - argv.minDistance) / 5) * 5;
+      bestIndex = allPuts.findIndex(p => p.strike >= targetStrike);
+      if (bestIndex === -1) bestIndex = allPuts.length - 5;
+      if (bestIndex < 4) bestIndex = 4;
+      
+      // Check if any premium strikes meet distance criteria for opportunities
+      opportunities.length = 0; // Clear and rebuild based on both criteria
+      opportunities.push(...premiumStrikes.filter(r => r.distance_from_spx >= argv.minDistance));
+    } else {
+      // No premium strikes found, show around target distance area
+      const targetStrike = Math.floor((spot - argv.minDistance) / 5) * 5;
+      bestIndex = allPuts.findIndex(p => p.strike >= targetStrike);
+      if (bestIndex === -1) bestIndex = allPuts.length - 5;
+      if (bestIndex < 4) bestIndex = 4;
+    }
   }
   
   
@@ -270,13 +314,22 @@ async function main() {
   
   for (let i = startIdx; i <= endIdx; i++) {
     const put = allPuts[i];
-    const hasPremium = put.bid >= argv.minPremium;
-    const hasDistance = put.distance_from_spx >= argv.minDistance;
-    const fullyQualifies = hasPremium && hasDistance;
-    
     let marker = ' ';
-    if (fullyQualifies) marker = '✅';
-    else if (hasPremium) marker = '💰';
+    
+    if (argv.targetBid) {
+      // TARGET BID MODE: Mark the closest match
+      if (best && put.strike === best.strike) {
+        marker = '🎯';
+      }
+    } else {
+      // REGULAR MODE: Mark based on criteria
+      const hasPremium = put.bid >= argv.minPremium;
+      const hasDistance = put.distance_from_spx >= argv.minDistance;
+      const fullyQualifies = hasPremium && hasDistance;
+      
+      if (fullyQualifies) marker = '✅';
+      else if (hasPremium) marker = '💰';
+    }
     
     console.log(
       `${marker} ${put.strike.toString().padEnd(5)} ` +
@@ -286,18 +339,23 @@ async function main() {
     );
   }
   
-  // SUGGESTED TRADE SECTION
+  // TRADE SECTION
   console.log('');
   if (opportunities.length > 0) {
     const bestQualified = opportunities.sort((a, b) => b.bid - a.bid)[0];
-    console.log('💡 SUGGESTED TRADE:');
-    console.log(`   🎯 SELL 1x ${bestQualified.strike}P`);
-    console.log(`   💰 Premium: $${bestQualified.bid.toFixed(2)}`);
-    console.log(`   📊 Credit: $${(bestQualified.bid * 100).toFixed(0)}`);
-    console.log('   ✅ YES');
+    console.log(`🎯 SELL 1x ${bestQualified.strike}P`);
+    console.log(`💰 Premium: $${bestQualified.bid.toFixed(2)}`);
+    console.log(`📊 Credit: $${(bestQualified.bid * 100).toFixed(0)}`);
+    console.log(`📏 Distance: ${bestQualified.distance_from_spx.toFixed(0)} points`);
+    
+    // Only show YES/NO for regular scanning, not target bid mode
+    if (!argv.targetBid) {
+      console.log('✅ YES');
+    }
   } else {
-    console.log('💡 SUGGESTED TRADE:');
-    console.log('   ❌ NO');
+    if (!argv.targetBid) {
+      console.log('❌ NO');
+    }
   }
   console.log('');
 }

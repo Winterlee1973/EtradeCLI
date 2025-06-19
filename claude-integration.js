@@ -34,7 +34,7 @@ The user can run commands directly by typing:
 
 You should engage in natural conversation about market conditions, strategy, and analysis.`;
 
-const INTRO_MESSAGE = '📊 TRADING BOT READY\n🎯 Commands: q TSLA | q MSFT | sdp 0 | sdp 1';
+const INTRO_MESSAGE = '📊 TRADING BOT READY\n🎯 Commands: q TSLA | q MSFT | sdp 0 | sdp 1 | sdp 1 0.80 | sdp 1 1';
 
 export async function claudeChat(message, userId) {
   try {

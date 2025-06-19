@@ -30,7 +30,7 @@ console.log('Signing Secret length:', process.env.SLACK_SIGNING_SECRET?.length);
 const TRADING_COMMANDS = {
   quote: /^(q|quote)\s+([A-Z]{1,5})$/i,
   deep_premium: /^(sdp|deep)\s+([01])$/i,
-  deep_premium_target: /^sdp\s+([01])\s+(\d+\.?\d*)$/i,
+  deep_premium_target: /^sdp\s+([01])\s+(\d*\.?\d+)$/i,
   deep_premium_custom: /^sdp\s+(\d+)\s+points?\s+(\d+\.?\d*)\s+premium$/i
 };
 
@@ -86,6 +86,15 @@ function parseMessage(text) {
       return {
         type: 'trading',
         command: `node spx-deeppremium.js ${match[2]}`
+      };
+    }
+    
+    // Deep premium target bid
+    if (TRADING_COMMANDS.deep_premium_target.test(remainingText)) {
+      const match = remainingText.match(TRADING_COMMANDS.deep_premium_target);
+      return {
+        type: 'trading',
+        command: `node spx-deeppremium.js ${match[1]} --target-bid ${match[2]}`
       };
     }
     
