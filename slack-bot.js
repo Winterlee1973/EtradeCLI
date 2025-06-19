@@ -236,8 +236,8 @@ app.event('app_mention', async ({ event, say }) => {
     startScheduler(app);
     
     console.log('📅 Scheduler started:');
-    console.log('   - SDP Today: 9:40 AM EST');
-    console.log('   - SDP Tomorrow: 3:50 PM EST');
+    console.log('   - SDP 0DTE: Tue/Wed/Thu at 9:40 AM EST');
+    console.log('   - SDP 1DTE: Friday at 3:50 PM EST');
     
     // Keep alive check every 15 minutes
     setInterval(async () => {
