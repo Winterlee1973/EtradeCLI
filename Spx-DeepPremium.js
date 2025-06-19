@@ -6,6 +6,7 @@ import { parse } from 'csv-parse/sync';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import yahooFinance from './yahoo-finance-quiet.js';
+import { SharedTemplates } from './shared-templates.js';
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -130,7 +131,10 @@ async function main() {
     
     // If no same-day expiration found, show message and exit
     if (!foundToday) {
-      console.log('🎯 SPX DEEP PREMIUM SCAN');
+      const isAutoScheduled = process.env.AUTO_SCHEDULED === 'true';
+      const runType = isAutoScheduled ? 'Auto Scheduled' : 'Manual';
+      const commandStr = `spx ${argv.expiration}${argv.targetBid ? ` ${argv.targetBid}` : ''}`;
+      console.log(`🎯 SPX DEEP PREMIUM SCAN: ${runType} - ${commandStr.toUpperCase()}`);
       console.log('─────────────────────────');
       console.log(`⏰ Time: ${timestamp}`);
       console.log(`📈 SPX: ${spot.toFixed(2)} (${marketStatus})`);
@@ -144,7 +148,10 @@ async function main() {
     
     // If market is closed, show message and exit
     if (marketStatus === 'CLOSED') {
-      console.log('🎯 SPX DEEP PREMIUM SCAN');
+      const isAutoScheduled = process.env.AUTO_SCHEDULED === 'true';
+      const runType = isAutoScheduled ? 'Auto Scheduled' : 'Manual';
+      const commandStr = `spx ${argv.expiration}${argv.targetBid ? ` ${argv.targetBid}` : ''}`;
+      console.log(`🎯 SPX DEEP PREMIUM SCAN: ${runType} - ${commandStr.toUpperCase()}`);
       console.log('─────────────────────────');
       console.log(`⏰ Time: ${timestamp}`);
       console.log(`📈 SPX: ${spot.toFixed(2)} (${marketStatus})`);
@@ -190,15 +197,13 @@ async function main() {
   const isTomorrow = expDate.toDateString() === tomorrow.toDateString();
   const dayNote = isTomorrow ? '(Tomorrow)' : '(Next Trading Day)';
   
-  // STRICT TEMPLATE OUTPUT
+  // STRICT TEMPLATE OUTPUT using SharedTemplates
   const isAutoScheduled = process.env.AUTO_SCHEDULED === 'true';
-  const commandStr = isAutoScheduled ? 
-    `spx ${argv.expiration}${argv.targetBid ? ` ${argv.targetBid}` : ''}` : 
-    `spx ${argv.expiration}${argv.targetBid ? ` ${argv.targetBid}` : ''}`;
+  const runType = isAutoScheduled ? 'Auto Scheduled' : 'Manual';
+  const commandStr = `spx ${argv.expiration}${argv.targetBid ? ` ${argv.targetBid}` : ''}`;
   
-  console.log(`🎯 SPX DEEP PREMIUM SCAN${isAutoScheduled ? ' - Auto Scheduled' : ''}`);
+  console.log(`🎯 SPX DEEP PREMIUM SCAN: ${runType} - ${commandStr.toUpperCase()}`);
   console.log('─────────────────────────');
-  console.log(`🤖 Command: ${commandStr}`);
   console.log(`⏰ Time: ${timestamp}`);
   console.log(`📈 SPX: ${spot.toFixed(2)} (${marketStatus})`);
   console.log(`📅 Exp: ${expDateStr} ${argv.strategy === '1dte' ? dayNote : ''}`);
@@ -310,9 +315,8 @@ async function main() {
   }
   
   
-  console.log('📋 CHAIN:');
-  console.log('Strike  Bid   Ask   Dist');
-  console.log('──────────────────────────');
+  // Use SharedTemplates for option chain display
+  console.log(SharedTemplates.optionschain1.terminal.header());
   
   // Show 4 strikes above and below (9 total)
   const startIdx = Math.max(0, bestIndex - 4);
@@ -337,50 +341,52 @@ async function main() {
       else if (hasPremium) marker = '💰';
     }
     
-    console.log(
-      `${marker} ${put.strike.toString().padEnd(5)} ` +
-      `${put.bid.toFixed(2).padStart(5)} ` +
-      `${put.ask.toFixed(2).padStart(5)} ` +
-      `${put.distance_from_spx.toFixed(0).padStart(5)}`
-    );
+    console.log(SharedTemplates.optionschain1.terminal.row(
+      put.strike,
+      put.bid.toFixed(2),
+      put.ask.toFixed(2),
+      put.distance_from_spx.toFixed(0),
+      marker
+    ));
   }
   
-  // TRADE SECTION
+  // Use SharedTemplates for execution summary
   console.log('');
   if (opportunities.length > 0) {
     const bestQualified = opportunities.sort((a, b) => b.bid - a.bid)[0];
-    console.log(`🎯 SELL 1x ${bestQualified.strike}P`);
-    console.log(`💰 Premium: $${bestQualified.bid.toFixed(2)}`);
-    console.log(`📊 Credit: $${(bestQualified.bid * 100).toFixed(0)}`);
-    console.log(`📏 Distance: ${bestQualified.distance_from_spx.toFixed(0)} points`);
+    console.log(SharedTemplates.order1.terminal.header());
+    console.log(SharedTemplates.order1.terminal.sell(1, 'SPX', bestQualified.strike));
+    console.log(SharedTemplates.order1.terminal.premium(bestQualified.bid.toFixed(2)));
+    console.log(SharedTemplates.order1.terminal.credit((bestQualified.bid * 100).toFixed(0)));
+    console.log(SharedTemplates.order1.terminal.distance(bestQualified.distance_from_spx.toFixed(0)));
     
-    // Add Safety Meter based on distance
+    // Add Safety Meter using shared utility
     const distance = bestQualified.distance_from_spx;
     let safetyLevel, safetyEmoji;
     
     if (distance >= 300) {
-      safetyLevel = 'Extremely Safe';
-      safetyEmoji = '🟢🟢🟢';
-    } else if (distance >= 200) {
       safetyLevel = 'Very Safe';
       safetyEmoji = '🟢🟢';
+    } else if (distance >= 200) {
+      safetyLevel = 'Safe';
+      safetyEmoji = '🟢';
     } else if (distance >= 100) {
-      safetyLevel = 'Somewhat Safe';
+      safetyLevel = 'Moderate';
       safetyEmoji = '🟡';
     } else {
       safetyLevel = 'Risky';
       safetyEmoji = '🔴';
     }
     
-    console.log(`🛡️  Safety Meter: ${safetyEmoji} ${safetyLevel}`);
+    console.log(SharedTemplates.order1.terminal.safety(safetyEmoji, safetyLevel));
     
     // Only show YES/NO for regular scanning, not target bid mode
     if (!argv.targetBid) {
-      console.log('✅ YES');
+      console.log(SharedTemplates.order1.terminal.yes());
     }
   } else {
     if (!argv.targetBid) {
-      console.log('❌ NO');
+      console.log(SharedTemplates.order1.terminal.no());
     }
   }
   console.log('');

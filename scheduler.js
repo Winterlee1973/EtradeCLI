@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { formatSPXForSlack } from './slack-formatter.js';
 
 const execAsync = promisify(exec);
 
@@ -32,26 +33,14 @@ export async function startScheduler(slackApp) {
     try {
       const { stdout } = await execAsync('AUTO_SCHEDULED=true node spx-deeppremium.js 0');
       
+      // Format using the rich Slack formatter
+      const formattedMessage = formatSPXForSlack(stdout);
+      
       await slackApp.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
         channel: USER_ID,  // DM to user
         text: '🌅 *SDP 0DTE Alert*',
-        blocks: [
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: '🌅 *SDP 0DTE Alert - Same Day Expiration*'
-            }
-          },
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `\`\`\`\n${stdout}\n\`\`\``
-            }
-          }
-        ]
+        ...formattedMessage
       });
       
       console.log('✅ 0DTE alert sent successfully');
@@ -74,26 +63,14 @@ export async function startScheduler(slackApp) {
     try {
       const { stdout } = await execAsync('AUTO_SCHEDULED=true node spx-deeppremium.js 1');
       
+      // Format using the rich Slack formatter
+      const formattedMessage = formatSPXForSlack(stdout);
+      
       await slackApp.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
         channel: USER_ID,
         text: '🌆 *SDP 1DTE Alert*',
-        blocks: [
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: '🌆 *SDP 1DTE Alert - Weekend Hold Position*'
-            }
-          },
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `\`\`\`\n${stdout}\n\`\`\``
-            }
-          }
-        ]
+        ...formattedMessage
       });
       
       console.log('✅ 1DTE alert sent successfully');
@@ -118,26 +95,14 @@ export async function startScheduler(slackApp) {
     try {
       const { stdout } = await execAsync('AUTO_SCHEDULED=true node spx-deeppremium.js 1');
       
+      // Format using the rich Slack formatter
+      const formattedMessage = formatSPXForSlack(stdout);
+      
       await slackApp.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
         channel: USER_ID,
         text: '🧪 *Test: SPX 1 $1.00 Scan*',
-        blocks: [
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `🧪 *Test: SPX 1 $1.00 Scan* - ${timestamp}`
-            }
-          },
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `\`\`\`\n${stdout}\n\`\`\``
-            }
-          }
-        ]
+        ...formattedMessage
       });
       
       console.log('✅ Test SPX scan sent successfully');

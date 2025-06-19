@@ -5,6 +5,8 @@
  * Converts terminal output to Slack-friendly format
  */
 
+import { SharedTemplates } from './shared-templates.js';
+
 export function formatForSlack(terminalOutput) {
   // Check if this is SPX Deep Premium output
   if (terminalOutput.includes('SPX DEEP PREMIUM SCAN')) {
@@ -29,7 +31,7 @@ export function formatForSlack(terminalOutput) {
   return '```\n' + formatted + '\n```';
 }
 
-function formatSPXForSlack(terminalOutput) {
+export function formatSPXForSlack(terminalOutput) {
   if (!terminalOutput || typeof terminalOutput !== 'string') {
     console.error('Invalid terminal output for Slack formatting:', terminalOutput);
     return { blocks: [{ type: 'section', text: { type: 'mrkdwn', text: 'Error: Invalid scan output' } }] };
@@ -42,6 +44,7 @@ function formatSPXForSlack(terminalOutput) {
   let chainData = [];
   let tradeData = {};
   let noExpiration = false;
+  let fullHeaderTitle = null;
   
   // Parse the output
   for (let i = 0; i < lines.length; i++) {
@@ -50,7 +53,10 @@ function formatSPXForSlack(terminalOutput) {
     
     const trimmedLine = line.trim();
     
-    if (trimmedLine.includes('Time:')) {
+    // Capture the full header with Manual/Auto Scheduled and command
+    if (trimmedLine.includes('🎯 SPX DEEP PREMIUM SCAN:')) {
+      fullHeaderTitle = trimmedLine.replace('🎯 ', '');
+    } else if (trimmedLine.includes('Time:')) {
       header.time = trimmedLine.replace('⏰ Time: ', '');
     } else if (trimmedLine.includes('SPX:')) {
       header.spx = trimmedLine.replace('📈 SPX: ', '');
@@ -147,9 +153,9 @@ function formatSPXForSlack(terminalOutput) {
     };
   }
   
-  // Determine DTE type and criteria for header
-  let headerTitle = '🎯 SPX Deep Premium Scan';
-  if (header.criteria) {
+  // Use the full header title if captured, otherwise build it
+  let headerTitle = fullHeaderTitle || '🎯 SPX Deep Premium Scan';
+  if (!fullHeaderTitle && header.criteria) {
     if (header.criteria.includes('Target:')) {
       headerTitle += ` - 1DTE ${header.criteria}`;
     } else if (header.criteria.includes('pts/')) {

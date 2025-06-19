@@ -4,7 +4,7 @@ const { App } = pkg;
 import dotenv from 'dotenv';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { claudeChat } from './claude-integration.js';
+import { claude } from './claude-integration.js';
 import { startScheduler } from './scheduler.js';
 import { formatForSlack, formatQuoteForSlack } from './slack-formatter.js';
 
@@ -198,7 +198,7 @@ app.message(async ({ message, say }) => {
       await handleOrdersRequest(say, parsed);
     } else {
       console.log('🤖 Sending to Claude:', parsed.message);
-      const response = await claudeChat(parsed.message, message.user);
+      const response = await claude.handleCommand(parsed.message);
       console.log('🧠 CLAUDE RESPONSE:');
       console.log('─'.repeat(50));
       
@@ -546,7 +546,7 @@ app.event('app_mention', async ({ event, say }) => {
       console.log('📤 Sent trading response to Slack (mention)');
     } else {
       console.log('🤖 Sending mention to Claude:', parsed.message);
-      const response = await claudeChat(parsed.message, event.user);
+      const response = await claude(parsed.message, event.user);
       console.log('🧠 CLAUDE RESPONSE (MENTION):');
       console.log('─'.repeat(50));
       console.log(response.substring(0, 300) + (response.length > 300 ? '...' : ''));
