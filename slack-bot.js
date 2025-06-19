@@ -30,6 +30,7 @@ console.log('Signing Secret length:', process.env.SLACK_SIGNING_SECRET?.length);
 const TRADING_COMMANDS = {
   quote: /^(q|quote)\s+([A-Z]{1,5})$/i,
   deep_premium: /^(sdp|deep)\s+([01])$/i,
+  deep_premium_target: /^sdp\s+([01])\s+(\d+\.?\d*)$/i,
   deep_premium_custom: /^sdp\s+(\d+)\s+points?\s+(\d+\.?\d*)\s+premium$/i
 };
 
@@ -63,32 +64,39 @@ async function executeCommand(command) {
 function parseMessage(text) {
   const cleanText = text.trim();
   
-  // Quote command
-  if (TRADING_COMMANDS.quote.test(cleanText)) {
-    const match = cleanText.match(TRADING_COMMANDS.quote);
-    return {
-      type: 'trading',
-      command: `node run.js q ${match[2].toUpperCase()}`
-    };
-  }
+  // Extract potential trading commands from anywhere in the message
+  const words = cleanText.split(/\s+/);
   
-  
-  // Deep premium commands
-  if (TRADING_COMMANDS.deep_premium.test(cleanText)) {
-    const match = cleanText.match(TRADING_COMMANDS.deep_premium);
-    return {
-      type: 'trading',
-      command: `node spx-deeppremium.js ${match[2]}`
-    };
-  }
-  
-  // Custom deep premium
-  if (TRADING_COMMANDS.deep_premium_custom.test(cleanText)) {
-    const match = cleanText.match(TRADING_COMMANDS.deep_premium_custom);
-    return {
-      type: 'trading',
-      command: `node spx-deeppremium.js --min-distance ${match[1]} --min-premium ${match[2]}`
-    };
+  // Look for trading commands anywhere in the message
+  for (let i = 0; i < words.length; i++) {
+    const remainingText = words.slice(i).join(' ');
+    
+    // Quote command
+    if (TRADING_COMMANDS.quote.test(remainingText)) {
+      const match = remainingText.match(TRADING_COMMANDS.quote);
+      return {
+        type: 'trading',
+        command: `node run.js q ${match[2].toUpperCase()}`
+      };
+    }
+    
+    // Deep premium commands
+    if (TRADING_COMMANDS.deep_premium.test(remainingText)) {
+      const match = remainingText.match(TRADING_COMMANDS.deep_premium);
+      return {
+        type: 'trading',
+        command: `node spx-deeppremium.js ${match[2]}`
+      };
+    }
+    
+    // Custom deep premium
+    if (TRADING_COMMANDS.deep_premium_custom.test(remainingText)) {
+      const match = remainingText.match(TRADING_COMMANDS.deep_premium_custom);
+      return {
+        type: 'trading',
+        command: `node spx-deeppremium.js --min-distance ${match[1]} --min-premium ${match[2]}`
+      };
+    }
   }
   
   // Default to Claude conversation
@@ -234,10 +242,6 @@ app.event('app_mention', async ({ event, say }) => {
     
     // Start scheduler for automated alerts
     startScheduler(app);
-    
-    console.log('📅 Scheduler started:');
-    console.log('   - SDP 0DTE: Tue/Wed/Thu at 9:40 AM EST');
-    console.log('   - SDP 1DTE: Friday at 3:50 PM EST');
     
     // Keep alive check every 15 minutes
     setInterval(async () => {
