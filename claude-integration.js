@@ -495,20 +495,16 @@ export class ClaudeIntegration {
     try {
       // Get SPX quote first
       const { stdout: quoteResult } = await execAsync('node run.js q SPX');
-      const spxMatch = quoteResult.match(/💰 ([\\d.]+)/);
+      const spxMatch = quoteResult.match(/💰 ([\d.]+)/);
       const spxPrice = spxMatch ? parseFloat(spxMatch[1]) : null;
       
       // Execute SPX scan - escape shell operators
       const cmd = `node spx-deeppremium.js "${sqlWhere}"`;
-      console.log('DEBUG: Executing command:', cmd);
       const { stdout } = await execAsync(cmd);
-      console.log('DEBUG: stdout length:', stdout.length);
-      console.log('DEBUG: stdout preview:', stdout.substring(0, 200));
       
       // Analyze results and provide intelligent commentary
       return this.analyzeAndRecommend(stdout, sqlWhere, strategyType, spxPrice);
     } catch (error) {
-      console.log('DEBUG: Error in executeAndAnalyze:', error.message);
       return `Error analyzing market: ${error.message}`;
     }
   }
@@ -599,17 +595,11 @@ export class ClaudeIntegration {
     
     // Extract key information
     const spxLine = lines.find(line => line.includes('📈 SPX:'));
-    const currentSpx = spxLine ? spxLine.match(/📈 SPX: ([\\d.]+)/)?.[1] : (spxPrice ? spxPrice.toString() : 'unknown');
+    const currentSpx = spxLine ? spxLine.match(/📈 SPX: ([\d.]+)/)?.[1] : (spxPrice ? spxPrice.toString() : 'unknown');
     
-    // Check for opportunities - let's debug this
+    // Check for opportunities
     const hasTarget = stdout.includes('🎯 SELL');
     const hasNo = stdout.includes('❌ NO');
-    const hasYes = stdout.includes('✅ YES');
-    
-    // Debug output to see what we're getting
-    console.log('DEBUG: hasTarget =', hasTarget);
-    console.log('DEBUG: hasNo =', hasNo); 
-    console.log('DEBUG: hasYes =', hasYes);
     
     // Calculate market context
     const now = new Date();
@@ -623,11 +613,6 @@ export class ClaudeIntegration {
       const premiumMatch = stdout.match(/💰 Premium: \$([.\d]+)/);
       const creditMatch = stdout.match(/📊 Credit: \$(\d+)/);
       const distanceMatch = stdout.match(/📏 Distance: (\d+) points from SPX/);
-      
-      console.log('DEBUG: sellMatch =', sellMatch);
-      console.log('DEBUG: premiumMatch =', premiumMatch);
-      console.log('DEBUG: creditMatch =', creditMatch);
-      console.log('DEBUG: distanceMatch =', distanceMatch);
       
       if (sellMatch && premiumMatch && creditMatch && distanceMatch) {
         const strike = sellMatch[1];
@@ -849,7 +834,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
   
   if (args.length === 0) {
-    console.log(claude.getHelp());
+    const help = claude.getHelp();
+    console.log('🤖 Lee\'s AI Trading Bot - Help Available');
+    console.log('Use specific commands or run in Slack for interactive interface');
+    console.log('Example: node claude-integration.js "q TSLA"');
     process.exit(0);
   }
   

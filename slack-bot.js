@@ -13,42 +13,133 @@ dotenv.config();
 
 const execAsync = promisify(exec);
 
-// Global state for refresh functionality
-let lastSpxCommand = 'node spx-deeppremium.js td1 minbid2 distance300'; // Default fallback
-
-// Load v2 help message as Slack blocks
-function getV2HelpMessage() {
-  return {
-    blocks: [
-      {
+// Convert AI response to Slack blocks
+function formatAIResponseForSlack(response) {
+  if (typeof response !== 'string') {
+    return { text: 'AI response received' };
+  }
+  
+  // Convert \n to actual newlines and clean up formatting
+  const cleanResponse = response
+    .replace(/\\n/g, '\n')
+    .replace(/\*\*(.*?)\*\*/g, '*$1*') // Convert **bold** to *bold*
+    .trim();
+  
+  // If it's a simple response, just return as a single section
+  if (!cleanResponse.includes('\n\n') && cleanResponse.length < 500) {
+    return {
+      text: 'AI Response',
+      blocks: [{
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: cleanResponse
+        }
+      }]
+    };
+  }
+  
+  // Split into sections based on double newlines
+  const sections = cleanResponse.split('\n\n').filter(section => section.trim());
+  
+  const blocks = [];
+  
+  for (const section of sections) {
+    if (section.includes('OPPORTUNITY FOUND') || section.includes('NO QUALIFYING OPPORTUNITIES')) {
+      // Header section - extract the key part
+      const headerText = section.includes('OPPORTUNITY FOUND') ? 'OPPORTUNITY FOUND' : 'NO QUALIFYING OPPORTUNITIES';
+      blocks.push({
         type: 'header',
         text: {
           type: 'plain_text',
-          text: '🤖 Lee\'s AI Trading Bot - v2'
+          text: headerText
+        }
+      });
+      
+      // Content section
+      const content = section.split('\n').slice(1).join('\n').trim();
+      if (content) {
+        blocks.push({
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: content
+          }
+        });
+      }
+    } else {
+      // Regular section - make sure it's not too long
+      const sectionText = section.length > 2000 ? section.substring(0, 1900) + '...' : section;
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: sectionText
+        }
+      });
+    }
+  }
+  
+  // Add action buttons if it's an opportunity
+  if (cleanResponse.includes('OPPORTUNITY FOUND')) {
+    blocks.push({
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '🔄 Refresh Scan' },
+          action_id: 'refresh_scan',
+          style: 'primary'
+        },
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '📋 View Orders' },
+          action_id: 'view_orders'
+        }
+      ]
+    });
+  }
+  
+  return {
+    text: 'AI Trading Analysis',
+    blocks: blocks
+  };
+}
+
+// Global state for refresh functionality
+let lastSpxCommand = 'node spx-deeppremium.js td1 minbid2 distance300'; // Default fallback
+
+// Help message with clickable strategies
+function getV2HelpMessage() {
+  return {
+    text: "Lee's AI Trading Bot - v2 Help Guide",
+    blocks: [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '🤖 *Lee\'s AI Trading Bot - v2*'
         }
       },
       {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: '*📊 Quote Commands*\n• `q TSLA` or `quote AAPL` - Get current price\n• "what\'s SPX at?" - Natural language quotes\n• Real-time price data with change indicators'
-        }
-      },
-      {
-        type: 'divider'
-      },
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: '*🎯 SPX Deep Premium Scanner*\n_Powered by `Spx-DeepPremium.js` - Advanced Options Strategy Engine_\n\n`spx WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300`'
+          text: '📊 *Quote Commands*\n• `q TSLA` or `quote AAPL` - Get current price\n• "what\'s SPX at?" - Natural language quotes'
         }
       },
       {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: '*Conservative Strategies:*\n• `spx WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350` - Safe premium collection\n• `spx WHERE tradingdays=1 AND minbid>=3.00 AND distance>=400` - Ultra-safe, high premium\n• `spx WHERE tradingdays=0 AND minbid>=1.00 AND distance>=250` - Conservative 0DTE'
+          text: '🎯 *SPX DEEP PREMIUM STRATEGY*'
+        }
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '🛡️ *Conservative Risk Filters*'
         }
       },
       {
@@ -56,30 +147,20 @@ function getV2HelpMessage() {
         elements: [
           {
             type: 'button',
-            text: {
-              type: 'plain_text',
-              text: '🛡️ Safe Strategy'
-            },
-            style: 'primary',
-            action_id: 'run_strategy',
-            value: 'WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350'
-          },
-          {
-            type: 'button',
-            text: {
-              type: 'plain_text',
-              text: '🔒 Ultra-Safe'
-            },
-            action_id: 'run_strategy',
+            text: { type: 'plain_text', text: '🟢 1D • $3.00+ • 400+pts' },
+            action_id: 'strategy_ultra_safe',
             value: 'WHERE tradingdays=1 AND minbid>=3.00 AND distance>=400'
           },
           {
             type: 'button',
-            text: {
-              type: 'plain_text',
-              text: '⚡ 0DTE Safe'
-            },
-            action_id: 'run_strategy',
+            text: { type: 'plain_text', text: '🟢 1D • $2.50+ • 350+pts' },
+            action_id: 'strategy_safe',
+            value: 'WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350'
+          },
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: '🟢 0D • $1.00+ • 250+pts' },
+            action_id: 'strategy_0dte_safe',
             value: 'WHERE tradingdays=0 AND minbid>=1.00 AND distance>=250'
           }
         ]
@@ -88,7 +169,7 @@ function getV2HelpMessage() {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: '*Balanced Strategies:*\n• `spx WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300` - **Standard 1DTE (recommended)**\n• `spx WHERE tradingdays=1 AND minbid>=1.50 AND distance>=250` - Moderate risk/reward\n• `spx WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200` - Standard 0DTE'
+          text: '⚖️ *Balanced Risk Filters*'
         }
       },
       {
@@ -96,30 +177,20 @@ function getV2HelpMessage() {
         elements: [
           {
             type: 'button',
-            text: {
-              type: 'plain_text',
-              text: '⭐ Standard (Recommended)'
-            },
-            style: 'primary',
-            action_id: 'run_strategy',
+            text: { type: 'plain_text', text: '🟡 1D • $2.00+ • 300+pts' },
+            action_id: 'strategy_standard',
             value: 'WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300'
           },
           {
             type: 'button',
-            text: {
-              type: 'plain_text',
-              text: '⚖️ Moderate'
-            },
-            action_id: 'run_strategy',
+            text: { type: 'plain_text', text: '🟡 1D • $1.50+ • 250+pts' },
+            action_id: 'strategy_moderate',
             value: 'WHERE tradingdays=1 AND minbid>=1.50 AND distance>=250'
           },
           {
             type: 'button',
-            text: {
-              type: 'plain_text',
-              text: '⚡ 0DTE Standard'
-            },
-            action_id: 'run_strategy',
+            text: { type: 'plain_text', text: '🟡 0D • $0.80+ • 200+pts' },
+            action_id: 'strategy_0dte_standard',
             value: 'WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200'
           }
         ]
@@ -128,7 +199,7 @@ function getV2HelpMessage() {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: '*Aggressive Strategies:*\n• `spx WHERE tradingdays=1 AND minbid>=1.00 AND distance>=200` - Higher risk/reward\n• `spx WHERE tradingdays=1 AND minbid>=0.50 AND distance>=150` - Close to money\n• `spx WHERE tradingdays=0 AND minbid>=0.30 AND distance>=100` - 0DTE scalping (extreme risk)'
+          text: '🚀 *Aggressive Risk Filters*'
         }
       },
       {
@@ -136,69 +207,34 @@ function getV2HelpMessage() {
         elements: [
           {
             type: 'button',
-            text: {
-              type: 'plain_text',
-              text: '🚀 Aggressive'
-            },
-            style: 'danger',
-            action_id: 'run_strategy',
+            text: { type: 'plain_text', text: '🔴 1D • $1.00+ • 200+pts' },
+            action_id: 'strategy_aggressive',
             value: 'WHERE tradingdays=1 AND minbid>=1.00 AND distance>=200'
           },
           {
             type: 'button',
-            text: {
-              type: 'plain_text',
-              text: '⚠️ Close to Money'
-            },
-            style: 'danger',
-            action_id: 'run_strategy',
+            text: { type: 'plain_text', text: '🔴 1D • $0.50+ • 150+pts' },
+            action_id: 'strategy_close_money',
             value: 'WHERE tradingdays=1 AND minbid>=0.50 AND distance>=150'
           },
           {
             type: 'button',
-            text: {
-              type: 'plain_text',
-              text: '💥 Extreme 0DTE'
-            },
-            style: 'danger',
-            action_id: 'run_strategy',
+            text: { type: 'plain_text', text: '🔴 0D • $0.30+ • 100+pts' },
+            action_id: 'strategy_extreme_0dte',
             value: 'WHERE tradingdays=0 AND minbid>=0.30 AND distance>=100'
           }
         ]
       },
       {
-        type: 'divider'
-      },
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: '*Order Management*'
-        }
-      },
-      {
         type: 'actions',
         elements: [
           {
             type: 'button',
-            text: {
-              type: 'plain_text',
-              text: '📋 View Orders'
-            },
-            style: 'primary',
-            action_id: 'view_orders'
+            text: { type: 'plain_text', text: '📋 View Orders' },
+            action_id: 'view_orders',
+            style: 'primary'
           }
         ]
-      },
-      {
-        type: 'divider'
-      },
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: '*🤖 AI-Powered Natural Language*\n_Intelligent strategy interpretation and suggestions_\n\n*Quick Start Examples:*\n```\nq SPX                                                       # Check SPX price\nspx WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300 # Standard 1DTE scan\nspx WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350 # Conservative scan\nspx WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200 # 0DTE scan\norders                                                      # Check order status\n```\n\n*Natural Language Commands:*\n```\n"premium possibilities going way out"     # AI interprets and suggests strategy\n"conservative spx strategy"               # Auto-generates conservative approach  \n"suggest aggressive strategies"           # Multiple strategy recommendations\n"what should I try for high volatility"  # Context-aware suggestions\n```'
-        }
       }
     ]
   };
@@ -262,8 +298,8 @@ function parseMessage(text) {
   const cleanText = text.trim();
   const lowerText = cleanText.toLowerCase();
   
-  // Handle help command and greetings
-  if (lowerText === 'help' || lowerText === 'hi' || lowerText === 'hello' || lowerText === 'start') {
+  // Handle help command
+  if (lowerText === 'help') {
     return { type: 'help', message: 'v2' };
   }
   
@@ -373,9 +409,10 @@ app.message(async ({ message, say }) => {
       if (typeof response === 'string') {
         console.log(response.substring(0, 300) + (response.length > 300 ? '...' : ''));
         console.log('─'.repeat(50));
-        await say({
-          text: response
-        });
+        
+        // Format AI response for Slack
+        const formattedResponse = formatAIResponseForSlack(response);
+        await say(formattedResponse);
       } else if (response && typeof response === 'object') {
         console.log(JSON.stringify(response).substring(0, 300) + '...');
         console.log('─'.repeat(50));
@@ -390,16 +427,16 @@ app.message(async ({ message, say }) => {
   }
 });
 
-// Handle strategy button clicks
-app.action('run_strategy', async ({ ack, say, body }) => {
+// Handle strategy button clicks - generic handler for all strategy actions
+app.action(/^strategy_/, async ({ ack, say, body }) => {
   await ack();
   
   try {
     const sqlWhere = body.actions[0].value;
     console.log('🚀 Running strategy:', sqlWhere);
     
-    // Execute the SPX command
-    const cmd = `node spx-deeppremium.js ${sqlWhere}`;
+    // Execute the SPX command with proper quoting
+    const cmd = `node spx-deeppremium.js '${sqlWhere}'`;
     const result = await executeCommand(cmd);
     
     // Save command for refresh functionality
@@ -783,13 +820,16 @@ app.event('app_mention', async ({ event, say }) => {
       console.log('📤 Sent v2 help message to Slack (mention)');
     } else {
       console.log('🤖 Sending mention to Claude:', parsed.message);
-      const response = await claude(parsed.message, event.user);
+      const response = await claude.handleCommand(parsed.message);
       console.log('🧠 CLAUDE RESPONSE (MENTION):');
       console.log('─'.repeat(50));
       console.log(response.substring(0, 300) + (response.length > 300 ? '...' : ''));
       console.log('─'.repeat(50));
+      
+      // Format AI response for Slack
+      const formattedResponse = formatAIResponseForSlack(response);
       await say({
-        text: response,
+        ...formattedResponse,
         channel: event.channel
       });
       console.log('📤 Sent Claude response to Slack (mention)');
@@ -846,11 +886,10 @@ app.event('app_mention', async ({ event, say }) => {
         console.log(`🔍 Found user for startup message: ${leeUser?.real_name || 'Unknown'} (${USER_ID})`);
       }
       
-      const helpMessage = getV2HelpMessage();
       await app.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
         channel: USER_ID,
-        text: `🚀 **Bot Restarted** - Lee's AI Trading Bot v2 is now online!\n\n${helpMessage}`
+        text: "🚀 Bot Restarted - Lee's AI Trading Bot v2 is now online!"
       });
       console.log('📖 Sent v2 help message on startup');
     } catch (startupError) {
