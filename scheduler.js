@@ -4,8 +4,27 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
-export function startScheduler(slackApp) {
-  const CHANNEL = process.env.SLACK_ALERT_CHANNEL || '#trading';
+export async function startScheduler(slackApp) {
+  // Get user ID from environment or try different approaches
+  let USER_ID = process.env.SLACK_USER_ID;
+  
+  // If no env var set, try to get user list and find Lee
+  if (!USER_ID) {
+    try {
+      const users = await slackApp.client.users.list({
+        token: process.env.SLACK_BOT_TOKEN
+      });
+      const leeUser = users.members.find(user => 
+        user.real_name?.toLowerCase().includes('lee') || 
+        user.name?.toLowerCase().includes('lee')
+      );
+      USER_ID = leeUser ? leeUser.id : 'D092322FRQA';
+      console.log(`🔍 Found user: ${leeUser?.real_name || 'Unknown'} (${USER_ID})`);
+    } catch (err) {
+      console.log('❌ Could not fetch users, using DM channel ID');
+      USER_ID = 'D092322FRQA';
+    }
+  }
   
   // Tuesday/Wednesday/Thursday 9:40 AM: SDP 0DTE
   cron.schedule('40 9 * * 2,3,4', async () => {
@@ -15,7 +34,7 @@ export function startScheduler(slackApp) {
       
       await slackApp.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
-        channel: CHANNEL,
+        channel: USER_ID,  // DM to user
         text: '🌅 *SDP 0DTE Alert*',
         blocks: [
           {
@@ -41,7 +60,7 @@ export function startScheduler(slackApp) {
       
       await slackApp.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
-        channel: CHANNEL,
+        channel: USER_ID,
         text: `🚨 0DTE Alert Error: ${error.message}`
       });
     }
@@ -57,7 +76,7 @@ export function startScheduler(slackApp) {
       
       await slackApp.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
-        channel: CHANNEL,
+        channel: USER_ID,
         text: '🌆 *SDP 1DTE Alert*',
         blocks: [
           {
@@ -83,8 +102,52 @@ export function startScheduler(slackApp) {
       
       await slackApp.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
-        channel: CHANNEL,
+        channel: USER_ID,
         text: `🚨 1DTE Alert Error: ${error.message}`
+      });
+    }
+  }, {
+    timezone: 'America/New_York'
+  });
+  
+  // TEST: Every 5 minutes during market hours for spx 1 1
+  cron.schedule('*/5 9-16 * * 1-5', async () => {
+    console.log('🧪 Running 5-min test SPX 1 1 scan...');
+    const timestamp = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+    
+    try {
+      const { stdout } = await execAsync('node spx-deeppremium.js 1');
+      
+      await slackApp.client.chat.postMessage({
+        token: process.env.SLACK_BOT_TOKEN,
+        channel: USER_ID,
+        text: '🧪 *Test: SPX 1 $1.00 Scan*',
+        blocks: [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `🧪 *Test: SPX 1 $1.00 Scan* - ${timestamp}`
+            }
+          },
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `\`\`\`\n${stdout}\n\`\`\``
+            }
+          }
+        ]
+      });
+      
+      console.log('✅ Test SPX scan sent successfully');
+    } catch (error) {
+      console.error('❌ Test SPX scan failed:', error);
+      
+      await slackApp.client.chat.postMessage({
+        token: process.env.SLACK_BOT_TOKEN,
+        channel: USER_ID,
+        text: `🚨 Test Scan Error: ${error.message}`
       });
     }
   }, {
@@ -98,7 +161,24 @@ export function startScheduler(slackApp) {
     });
   }
   
+  // Send test message immediately
+  (async () => {
+    try {
+      console.log('📤 Sending test message to verify DM channel...');
+      await slackApp.client.chat.postMessage({
+        token: process.env.SLACK_BOT_TOKEN,
+        channel: USER_ID,
+        text: 'Hey Lee! 👋 Scheduler is now configured and ready to send automated scans to this DM.'
+      });
+      console.log('✅ Test message sent successfully');
+    } catch (error) {
+      console.error('❌ Test message failed:', error);
+    }
+  })();
+
   console.log('📅 Scheduler initialized with Eastern Time:');
   console.log('   🌅 0DTE Alerts: Tue/Wed/Thu at 9:40 AM EST');
   console.log('   🌆 1DTE Alert: Friday at 3:50 PM EST');
+  console.log('   🧪 TEST: SPX 1 1 every 5 mins during market hours');
+  console.log(`   📨 Sending DMs to channel: ${USER_ID}`);
 }

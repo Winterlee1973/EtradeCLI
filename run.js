@@ -14,12 +14,14 @@ const commands = {
   'sdp': ['node', 'spx-deeppremium.js'],
   'deep': ['node', 'spx-deeppremium.js'],
   'spx': ['node', 'spx-deeppremium.js'],
+  'orders': ['node', 'order-status.js'],
 };
 
 if (!command || !commands[command]) {
   console.log('Available commands:');
   console.log('  quote (or q) <symbol>     - Get stock quote');
   console.log('  sdp, deep, spx <args>     - Run SPX deep premium scanner');
+  console.log('  orders [filter]           - View orders (all, open, closed)');
   process.exit(1);
 }
 

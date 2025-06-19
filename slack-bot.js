@@ -30,9 +30,12 @@ console.log('Signing Secret length:', process.env.SLACK_SIGNING_SECRET?.length);
 // Trading command patterns
 const TRADING_COMMANDS = {
   quote: /^(q|quote)\s+([A-Z]{1,5})$/i,
-  deep_premium: /^(sdp|deep)\s+([01])$/i,
-  deep_premium_target: /^sdp\s+([01])\s+(\d*\.?\d+)$/i,
-  deep_premium_custom: /^sdp\s+(\d+)\s+points?\s+(\d+\.?\d*)\s+premium$/i
+  deep_premium: /^(sdp|deep|spx)\s+([01])$/i,
+  deep_premium_target: /^(sdp|spx)\s+([01])\s+(\d*\.?\d+)$/i,
+  deep_premium_custom: /^(sdp|spx)\s+(\d+)\s+points?\s+(\d+\.?\d*)\s+premium$/i,
+  orders: /^orders?$/i,
+  orders_open: /^orders?\s+open$/i,
+  orders_closed: /^orders?\s+closed$/i
 };
 
 // Execute trading commands
@@ -100,7 +103,7 @@ function parseMessage(text) {
       const match = remainingText.match(TRADING_COMMANDS.deep_premium_target);
       return {
         type: 'trading',
-        command: `node spx-deeppremium.js ${match[1]} --target-bid ${match[2]}`
+        command: `node spx-deeppremium.js ${match[2]} --target-bid ${match[3]}`
       };
     }
     
@@ -109,7 +112,29 @@ function parseMessage(text) {
       const match = remainingText.match(TRADING_COMMANDS.deep_premium_custom);
       return {
         type: 'trading',
-        command: `node spx-deeppremium.js --min-distance ${match[1]} --min-premium ${match[2]}`
+        command: `node spx-deeppremium.js --min-distance ${match[2]} --min-premium ${match[3]}`
+      };
+    }
+    
+    // Orders commands
+    if (TRADING_COMMANDS.orders_open.test(remainingText)) {
+      return {
+        type: 'orders',
+        filter: 'open'
+      };
+    }
+    
+    if (TRADING_COMMANDS.orders_closed.test(remainingText)) {
+      return {
+        type: 'orders',
+        filter: 'closed'
+      };
+    }
+    
+    if (TRADING_COMMANDS.orders.test(remainingText)) {
+      return {
+        type: 'orders',
+        filter: 'all'
       };
     }
   }
@@ -169,16 +194,27 @@ app.message(async ({ message, say }) => {
         }
       }
       console.log('📤 Sent trading response to Slack');
+    } else if (parsed.type === 'orders') {
+      await handleOrdersRequest(say, parsed);
     } else {
       console.log('🤖 Sending to Claude:', parsed.message);
       const response = await claudeChat(parsed.message, message.user);
       console.log('🧠 CLAUDE RESPONSE:');
       console.log('─'.repeat(50));
-      console.log(response.substring(0, 300) + (response.length > 300 ? '...' : ''));
-      console.log('─'.repeat(50));
-      await say({
-        text: response
-      });
+      
+      // Handle both string and object responses
+      if (typeof response === 'string') {
+        console.log(response.substring(0, 300) + (response.length > 300 ? '...' : ''));
+        console.log('─'.repeat(50));
+        await say({
+          text: response
+        });
+      } else if (response && typeof response === 'object') {
+        console.log(JSON.stringify(response).substring(0, 300) + '...');
+        console.log('─'.repeat(50));
+        await say(response);
+      }
+      
       console.log('📤 Sent Claude response to Slack');
     }
   } catch (error) {
@@ -188,12 +224,59 @@ app.message(async ({ message, say }) => {
 });
 
 // Handle button clicks
-app.action('execute_trade', async ({ ack, say }) => {
+app.action('execute_trade', async ({ ack, say, body }) => {
   await ack();
   
-  await say({
-    text: `⚡ *Trade Execution*\nThis would connect to your brokerage API to execute the trade.`
-  });
+  try {
+    // Extract trade details from the message blocks
+    let tradeDetails = null;
+    for (const block of body.message.blocks) {
+      if (block.text && block.text.text && block.text.text.includes('SELL 1x')) {
+        const text = block.text.text;
+        const match = text.match(/SELL 1x (\d+)P.*Premium: \$(\d+\.?\d*).*Credit: \$(\d+)/);
+        if (match) {
+          tradeDetails = {
+            strike: match[1],
+            premium: match[2],
+            credit: match[3],
+            timestamp: new Date().toISOString(),
+            user: body.user.id,
+            status: 'EXECUTED'
+          };
+          break;
+        }
+      }
+    }
+    
+    if (tradeDetails) {
+      // Write to orders file
+      const fs = await import('fs/promises');
+      const ordersFile = 'orders.json';
+      
+      let orders = [];
+      try {
+        const data = await fs.readFile(ordersFile, 'utf8');
+        orders = JSON.parse(data);
+      } catch (err) {
+        // File doesn't exist yet
+      }
+      
+      orders.push(tradeDetails);
+      await fs.writeFile(ordersFile, JSON.stringify(orders, null, 2));
+      
+      await say({
+        text: `✅ *Order Executed*\nStrike: ${tradeDetails.strike}P\nPremium: $${tradeDetails.premium}\nCredit: $${tradeDetails.credit}\n\nOrder saved to orders.json`
+      });
+    } else {
+      await say({
+        text: `❌ Could not extract trade details from message`
+      });
+    }
+  } catch (error) {
+    await say({
+      text: `❌ Error executing trade: ${error.message}`
+    });
+  }
 });
 
 app.action('refresh_scan', async ({ ack, say }) => {
@@ -225,6 +308,194 @@ app.action('trade_anyway', async ({ ack, say }) => {
   await say({
     text: `⚠️ *Trade Anyway Selected*\nPlease review the option chain above and manually select a strike that meets your risk tolerance.\n\n*Warning:* Trading below recommended criteria increases risk.`
   });
+});
+
+// Helper function for orders requests
+async function handleOrdersRequest(say, parsed) {
+  console.log(`📋 Fetching orders list with filter: ${parsed.filter}`);
+  try {
+    const result = await executeCommand(`node run.js orders ${parsed.filter}`);
+    
+    // Format the result for Slack
+    const lines = result.split('\n').filter(line => line.trim());
+    
+    // Strip ANSI codes and check for no orders
+    const cleanResult = result.replace(/\x1b\[[0-9;]*m/g, '');
+    if (cleanResult.includes('No orders found') || cleanResult.includes('No open orders found') || cleanResult.includes('No closed orders found')) {
+      await say({
+        text: '📋 No orders found',
+        blocks: [{
+          type: 'actions',
+          elements: [
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: '📋 All Orders' },
+              action_id: 'orders_all',
+              style: 'primary'
+            },
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: '🟡 Open Orders' },
+              action_id: 'orders_open'
+            },
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: '🟢 Closed Orders' },
+              action_id: 'orders_closed'
+            }
+          ]
+        }]
+      });
+    } else {
+      // Parse orders data directly from the orders.json file for better formatting
+      let orderText = '';
+      let summaryText = '';
+      
+      try {
+        const fs = await import('fs/promises');
+        const ordersData = await fs.readFile('orders.json', 'utf8');
+        const orders = JSON.parse(ordersData);
+        
+        // Apply filter
+        let filteredOrders = orders;
+        if (parsed.filter === 'open') {
+          filteredOrders = orders.filter(order => order.status === 'PENDING' || order.status === 'OPEN');
+        } else if (parsed.filter === 'closed') {
+          filteredOrders = orders.filter(order => order.status === 'FILLED' || order.status === 'CANCELLED');
+        }
+        
+        // Group orders by status
+        const openOrders = filteredOrders.filter(o => o.status === 'PENDING' || o.status === 'OPEN');
+        const filledOrders = filteredOrders.filter(o => o.status === 'FILLED');
+        const cancelledOrders = filteredOrders.filter(o => o.status === 'CANCELLED');
+        
+        orderText = '';
+        
+        // Open Orders Section
+        if (openOrders.length > 0 && (parsed.filter === 'all' || parsed.filter === 'open')) {
+          orderText += `🟡 *OPEN ORDERS (${openOrders.length})*\n`;
+          openOrders.forEach((order) => {
+            const date = new Date(order.timestamp).toLocaleDateString('en-US', {
+              month: '2-digit', day: '2-digit', year: '2-digit'
+            });
+            const time = new Date(order.timestamp).toLocaleTimeString('en-US', {
+              hour: '2-digit', minute: '2-digit', hour12: true
+            });
+            
+            orderText += `• *${order.symbol}* ${order.strike}P - ${order.quantity}x @ $${order.price}\n`;
+            orderText += `  ${order.status} • ${date} ${time} • Exp: ${order.expDate}\n`;
+          });
+          orderText += '\n';
+        }
+        
+        // Filled Orders Section  
+        if (filledOrders.length > 0 && (parsed.filter === 'all' || parsed.filter === 'closed')) {
+          orderText += `🟢 *FILLED ORDERS (${filledOrders.length})*\n`;
+          filledOrders.forEach((order) => {
+            const date = new Date(order.timestamp).toLocaleDateString('en-US', {
+              month: '2-digit', day: '2-digit', year: '2-digit'
+            });
+            const time = new Date(order.timestamp).toLocaleTimeString('en-US', {
+              hour: '2-digit', minute: '2-digit', hour12: true
+            });
+            
+            orderText += `• *${order.symbol}* ${order.strike}P - ${order.quantity}x @ $${order.price}\n`;
+            orderText += `  FILLED • ${date} ${time} • Exp: ${order.expDate}\n`;
+          });
+          orderText += '\n';
+        }
+        
+        // Cancelled Orders Section
+        if (cancelledOrders.length > 0 && (parsed.filter === 'all' || parsed.filter === 'closed')) {
+          orderText += `🔴 *CANCELLED ORDERS (${cancelledOrders.length})*\n`;
+          cancelledOrders.forEach((order) => {
+            const date = new Date(order.timestamp).toLocaleDateString('en-US', {
+              month: '2-digit', day: '2-digit', year: '2-digit'
+            });
+            const time = new Date(order.timestamp).toLocaleTimeString('en-US', {
+              hour: '2-digit', minute: '2-digit', hour12: true
+            });
+            
+            orderText += `• *${order.symbol}* ${order.strike}P - ${order.quantity}x @ $${order.price}\n`;
+            orderText += `  CANCELLED • ${date} ${time} • Exp: ${order.expDate}\n`;
+          });
+        }
+        
+        // Calculate summary stats
+        const openCount = orders.filter(o => o.status === 'PENDING' || o.status === 'OPEN').length;
+        const filledCount = orders.filter(o => o.status === 'FILLED').length;
+        const cancelledCount = orders.filter(o => o.status === 'CANCELLED').length;
+        summaryText = `Open: ${openCount} • Filled: ${filledCount} • Cancelled: ${cancelledCount} • Total: ${orders.length}`;
+      } catch (fileError) {
+        // Fallback to parsing command output
+        const cleanResult = result.replace(/\x1b\[[0-9;]*m/g, '');
+        orderText = '```\n' + cleanResult + '\n```';
+        const cleanLines = lines.map(line => line.replace(/\x1b\[[0-9;]*m/g, ''));
+        const summaryLine = cleanLines.find(line => line.includes('Open:') && line.includes('Filled:'));
+        summaryText = summaryLine || '';
+      }
+      
+      await say({
+        text: `📋 *Order Status* ${summaryText ? '- ' + summaryText : ''}`,
+        blocks: [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: orderText
+            }
+          },
+          {
+            type: 'actions',
+            elements: [
+              {
+                type: 'button',
+                text: { type: 'plain_text', text: '📋 All Orders' },
+                action_id: 'orders_all',
+                style: parsed.filter === 'all' ? 'primary' : undefined
+              },
+              {
+                type: 'button',
+                text: { type: 'plain_text', text: '🟡 Open Orders' },
+                action_id: 'orders_open',
+                style: parsed.filter === 'open' ? 'primary' : undefined
+              },
+              {
+                type: 'button',
+                text: { type: 'plain_text', text: '🟢 Closed Orders' },
+                action_id: 'orders_closed',
+                style: parsed.filter === 'closed' ? 'primary' : undefined
+              }
+            ]
+          }
+        ]
+      });
+    }
+  } catch (error) {
+    await say(`❌ Error reading orders: ${error.message}`);
+  }
+}
+
+// Handle Orders button
+app.action('orders_button', async ({ ack, say }) => {
+  await ack();
+  await handleOrdersRequest(say, { filter: 'all' });
+});
+
+// Handle order filter buttons
+app.action('orders_all', async ({ ack, say }) => {
+  await ack();
+  await handleOrdersRequest(say, { filter: 'all' });
+});
+
+app.action('orders_open', async ({ ack, say }) => {
+  await ack();
+  await handleOrdersRequest(say, { filter: 'open' });
+});
+
+app.action('orders_closed', async ({ ack, say }) => {
+  await ack();
+  await handleOrdersRequest(say, { filter: 'closed' });
 });
 
 // Handle app mentions
@@ -320,7 +591,7 @@ app.event('app_mention', async ({ event, say }) => {
     }
     
     // Start scheduler for automated alerts
-    startScheduler(app);
+    await startScheduler(app);
     
     // Keep alive check every 15 minutes
     setInterval(async () => {
