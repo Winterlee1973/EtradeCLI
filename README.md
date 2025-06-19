@@ -1,6 +1,6 @@
 # EtradeCLI
 
-A command-line interface for real-time stock quotes and SPX options trading strategies.
+A command-line interface for real-time stock quotes and deep premium SPX options scanning.
 
 ## Quick Start
 
@@ -14,11 +14,10 @@ To minimize approval prompts when using with Claude, use the universal runner:
 "quote tesla"
 "what's SPX at?"
 
-# Run SPX put seller - just say:
-"sps"
-"run puts"  
-"find spx puts with dime bids"
-"show me puts 300 points out"
+# Run SPX deep premium scanner - just say:
+"sdp today"
+"sdp tomorrow"  
+"find deep puts"
 ```
 
 Claude will automatically run the appropriate commands.
@@ -32,9 +31,9 @@ Claude will automatically run the appropriate commands.
 ./quote TSLA
 node quote.js AAPL
 
-# Run SPX put seller
-node spx-put-seller.js --filter "bid>=0.10"
-node spx-put-seller.js --filter "bid>=0.05 AND distance_from_spx>=300"
+# Run SPX deep premium scanner
+node spx-deeppremium.js today
+node spx-deeppremium.js tomorrow
 ```
 
 ## Features
@@ -45,19 +44,19 @@ node spx-put-seller.js --filter "bid>=0.05 AND distance_from_spx>=300"
 - Timestamps with seconds precision
 - Supports index shortcuts (SPX → ^SPX, VIX → ^VIX)
 
-### SPX Put Seller (`spx-put-seller.js`)
+### SPX Deep Premium Scanner (`spx-deeppremium.js`)
 - Live SPX price and option chains from Yahoo Finance
-- SQL-style filtering for finding opportunities
-- Shows 11-strike context window (5 above, 5 below selected)
-- Displays bid, ask, last, volume, and distance from spot
-- Highlights selected strike with order preview
+- Scans for deep out-of-the-money premium opportunities
+- TODAY mode: 0DTE options 200+ points out with $0.80+ bid
+- TOMORROW mode: 1DTE options 350+ points out with $2.00+ bid
+- Shows option chain context with qualifying strikes highlighted
 
 ## Available Scripts
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
 | `quote.js` | Get stock/index quotes | `./quote TSLA` |
-| `spx-put-seller.js` | Find SPX puts to sell | `node spx-put-seller.js --filter "bid>=0.10"` |
+| `spx-deeppremium.js` | Scan deep SPX premiums | `node spx-deeppremium.js today` |
 | `run.js` | Universal runner for Claude | `node run.js q TSLA` |
 
 ## Command Examples
@@ -73,19 +72,16 @@ node run.js quote SPX
 ./quote ^GSPC  # S&P 500
 ```
 
-### SPX Put Seller Examples
+### SPX Deep Premium Examples
 ```bash
-# Find puts with at least 10 cent bid (using short alias)
-node run.js sps --filter "bid>=0.10"
+# Scan today's 0DTE opportunities
+node run.js sdp today
 
-# Find puts 300+ points out of the money
-node run.js sps --filter "distance_from_spx>=300"
+# Scan tomorrow's 1DTE opportunities
+node run.js sdp tomorrow
 
-# Combine filters
-node run.js sps --filter "bid>=0.05 AND distance_from_spx>=200"
-
-# Additional filters (all aliases work: sps, spx, puts)
-node run.js sps --filter "bid>=0.15 AND volume>=100"
+# Custom parameters
+node spx-deeppremium.js --min-distance 300 --min-premium 1.50
 ```
 
 ### Terminal Aliases
@@ -95,23 +91,20 @@ For direct terminal usage, you can create bash aliases:
 ```bash
 # Add to your ~/.bashrc or ~/.zshrc
 alias q='node /path/to/EtradeCLI/run.js q'
-alias sps='node /path/to/EtradeCLI/run.js sps'
+alias sdp='node /path/to/EtradeCLI/run.js sdp'
 
 # Then use directly:
 q TSLA
-sps --filter "bid>=0.10"
+sdp today
 ```
 
-## Filter Reference
+## Deep Premium Strategy Reference
 
-| Filter | Description |
-|--------|-------------|
-| `bid>=0.10` | Minimum bid of 10 cents |
-| `ask<=0.20` | Maximum ask of 20 cents |
-| `distance_from_spx>=300` | Strike at least 300 points below SPX |
-| `volume>=100` | Minimum volume of 100 contracts |
-| `bid>=0.05 AND distance_from_spx>=200` | Combine with AND |
-| `bid>=0.15 OR volume>=1000` | Combine with OR |
+| Strategy | Distance | Min Bid | Use Case |
+|----------|----------|---------|----------|
+| TODAY (0DTE) | 200+ points | $0.80+ | Same-day expiration trades |
+| TOMORROW (1DTE) | 350+ points | $2.00+ | Next-day expiration setup |
+| Custom | User defined | User defined | Flexible scanning parameters |
 
 ## Troubleshooting
 

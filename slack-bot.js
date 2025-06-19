@@ -6,6 +6,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { claudeChat } from './claude-integration.js';
 import { startScheduler } from './scheduler.js';
+import { formatForSlack, formatQuoteForSlack } from './slack-formatter.js';
 
 dotenv.config();
 
@@ -61,11 +62,9 @@ function parseMessage(text) {
   
   // SPX puts command
   if (TRADING_COMMANDS.spx_puts.test(cleanText)) {
-    const filterPart = cleanText.match(TRADING_COMMANDS.spx_puts)[2];
-    const filter = filterPart ? filterPart.trim() : 'bid>=0.05 AND distance_from_spx>=200';
     return {
       type: 'trading',
-      command: `node run.js sps --filter "${filter}"`
+      command: `node run.js sps`
     };
   }
   
@@ -118,8 +117,17 @@ app.message(async ({ message, say }) => {
       console.log('─'.repeat(50));
       console.log(result.substring(0, 500) + (result.length > 500 ? '...' : ''));
       console.log('─'.repeat(50));
+      
+      // Format based on command type
+      let formattedResult;
+      if (parsed.command.includes(' q ') || parsed.command.includes('quote')) {
+        formattedResult = formatQuoteForSlack(result);
+      } else {
+        formattedResult = formatForSlack(result);
+      }
+      
       await say({
-        text: `\`\`\`\n${result}\n\`\`\``,
+        text: formattedResult,
         thread_ts: message.ts
       });
       console.log('📤 Sent trading response to Slack');
@@ -161,8 +169,17 @@ app.event('app_mention', async ({ event, say }) => {
       console.log('─'.repeat(50));
       console.log(result.substring(0, 500) + (result.length > 500 ? '...' : ''));
       console.log('─'.repeat(50));
+      
+      // Format based on command type
+      let formattedResult;
+      if (parsed.command.includes(' q ') || parsed.command.includes('quote')) {
+        formattedResult = formatQuoteForSlack(result);
+      } else {
+        formattedResult = formatForSlack(result);
+      }
+      
       await say({
-        text: `\`\`\`\n${result}\n\`\`\``,
+        text: formattedResult,
         channel: event.channel,
         thread_ts: event.ts
       });

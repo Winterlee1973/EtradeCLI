@@ -61,13 +61,11 @@ async function main() {
   }
 
   // 1) Fetch spot price first
-  console.log('📊 Fetching current SPX data...');
   const quote = await yahooFinance.quote('^SPX');
   const spot = quote.regularMarketPrice;
   console.log(`🎯 Current SPX: $${spot.toFixed(2)}\n`);
   
   // 2) Fetch live option data from Yahoo Finance
-  console.log('📡 Fetching live option chain from Yahoo Finance...');
   const optionInfo = await yahooFinance.options('^SPX');
   const expiration = optionInfo.expirationDates[argv.expiration];
   const expDate = new Date(expiration * 1000);
@@ -107,18 +105,18 @@ async function main() {
   let bestIndex = -1;
   
   // POTENTIAL ORDER SUMMARY
-  console.log('🎯 POTENTIAL ORDER SUMMARY:');
+  console.log('🎯 EXECUTION SUMMARY:');
   if (opportunities.length > 0) {
     opportunities.sort((a, b) => b.bid - a.bid);
     best = opportunities[0];
     bestIndex = allPuts.findIndex(p => p.strike === best.strike);
-    console.log(`✅ YES - ${opportunities.length} execution-ready opportunities found`);
-    console.log(`   Best: ${best.strike} strike, $${best.bid.toFixed(2)} bid (${best.distance_from_spx.toFixed(0)} points out)`);
-    console.log(`   Credit: $${(best.bid * 100).toFixed(0)} per contract\n`);
+    console.log(`✅ FOUND: ${opportunities.length} qualifying opportunities`);
+    console.log(`💰 BEST: ${best.strike}P @ $${best.bid.toFixed(2)} (${best.distance_from_spx.toFixed(0)} pts out)`);
+    console.log(`💵 CREDIT: $${(best.bid * 100).toFixed(0)} per contract\n`);
   } else {
-    console.log(`❌ NO - No opportunities meet criteria:`);
-    console.log(`   • Minimum distance: ${argv.minDistance} points`);
-    console.log(`   • Minimum premium: $${argv.minPremium.toFixed(2)}\n`);
+    console.log(`❌ NONE: No opportunities meet criteria`);
+    console.log(`   📏 Min distance: ${argv.minDistance} points out`);
+    console.log(`   💎 Min premium: $${argv.minPremium.toFixed(2)} bid\n`);
     
     // Still show grid around reasonable strikes for context
     const targetStrike = Math.floor((spot - argv.minDistance) / 5) * 5; // Round to nearest 5
@@ -127,9 +125,9 @@ async function main() {
     if (bestIndex < 5) bestIndex = 5; // Ensure we can show 5 above
   }
   
-  console.log('📈 Option Chain Context:');
-  console.log('Strike  | Bid    | Ask    | Last   | Volume | Distance | Match');
-  console.log('--------|--------|--------|--------|--------|----------|------');
+  console.log('📊 OPTION CHAIN:');
+  console.log('Strike  │ Bid    │ Ask    │ Last   │ Volume │ Distance │ Status');
+  console.log('────────┼────────┼────────┼────────┼────────┼──────────┼────────');
   
   // Show 5 strikes above and below
   const startIdx = Math.max(0, bestIndex - 5);
@@ -139,24 +137,24 @@ async function main() {
     const put = allPuts[i];
     const isSelected = best && i === bestIndex;
     const isMatch = opportunities.some(opp => opp.strike === put.strike);
+    const status = isSelected ? '🎯 BEST' : isMatch ? '✅ QUAL' : '';
     console.log(
-      `${put.strike.toString().padEnd(7)} | ` +
-      `${put.bid.toFixed(2).padStart(6)} | ` +
-      `${put.ask.toFixed(2).padStart(6)} | ` +
-      `${(put.lastPrice || 0).toFixed(2).padStart(6)} | ` +
-      `${put.volume.toString().padStart(6)} | ` +
-      `${put.distance_from_spx.toFixed(0).padStart(8)} | ` +
-      (isSelected ? '← SELECTED' : isMatch ? '← MATCH' : '')
+      `${put.strike.toString().padEnd(7)} │ ` +
+      `${put.bid.toFixed(2).padStart(6)} │ ` +
+      `${put.ask.toFixed(2).padStart(6)} │ ` +
+      `${(put.lastPrice || 0).toFixed(2).padStart(6)} │ ` +
+      `${put.volume.toString().padStart(6)} │ ` +
+      `${put.distance_from_spx.toFixed(0).padStart(8)} │ ` +
+      status
     );
   }
   
   if (best) {
-    console.log(`\n💰 Best Deep Premium Opportunity:`);
-    console.log(`   Strike: ${best.strike} (${best.distance_from_spx.toFixed(0)} points below SPX)`);
-    console.log(`   Premium: $${best.bid.toFixed(2)} bid`);
-    console.log(`   Credit: $${(best.bid * 100).toFixed(0)} per contract`);
-    console.log(`   Volume: ${best.volume.toLocaleString()} contracts`);
-    console.log(`   Status: ✅ EXECUTION READY`);
+    console.log(`\n🎯 EXECUTION READY:`);
+    console.log(`   📍 Strike: ${best.strike}P (${best.distance_from_spx.toFixed(0)} pts below SPX)`);
+    console.log(`   💰 Premium: $${best.bid.toFixed(2)} bid`);
+    console.log(`   💵 Credit: $${(best.bid * 100).toFixed(0)} per contract`);
+    console.log(`   📊 Volume: ${best.volume.toLocaleString()} contracts`);
   }
 }
 

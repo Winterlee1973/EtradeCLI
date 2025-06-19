@@ -6,9 +6,8 @@ Slack integration for real-time trading commands and Claude AI conversations.
 
 ### 🤖 Trading Commands
 - **Quotes**: `q TSLA` or `quote AAPL`
-- **SPX Puts**: `sps` or `spx` (finds put selling opportunities)
+- **SPX Puts**: `sps` or `spx` (uses spx-put-seller.js default settings)
 - **Deep Premium**: `sdp today` or `sdp tomorrow`
-- **Custom Filters**: `sps bid>=0.10 AND distance_from_spx>=300`
 
 ### 🧠 Claude AI Integration
 - Natural conversation about market conditions
@@ -71,10 +70,9 @@ npm run dev
 ### In Slack:
 ```
 q SPX                    # Get SPX quote
-sps                      # Find put selling opportunities  
+sps                      # Find put selling opportunities (uses script defaults)
 sdp today                # Scan for 0DTE deep premium
 sdp tomorrow             # Scan for 1DTE deep premium
-puts 300 out             # Find puts 300+ points below SPX
 
 # Claude conversations:
 What's causing the market drop today?

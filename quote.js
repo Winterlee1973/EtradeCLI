@@ -35,10 +35,14 @@ async function getQuote(symbol) {
   try {
     const quote = await yahooFinance.quote(yahooSymbol);
     
-    console.log(`${quote.longName || quote.shortName || quote.symbol}`);
-    console.log(`${quote.symbol}: $${quote.regularMarketPrice.toFixed(2)}`);
-    console.log(`${quote.regularMarketChange >= 0 ? '+' : ''}${quote.regularMarketChange.toFixed(2)} (${quote.regularMarketChangePercent >= 0 ? '+' : ''}${quote.regularMarketChangePercent.toFixed(2)}%)`);
-    console.log(`${new Date().toLocaleString('en-US', { 
+    const change = quote.regularMarketChange;
+    const changePct = quote.regularMarketChangePercent;
+    const changeIcon = change >= 0 ? '📈' : '📉';
+    
+    console.log(`📊 ${quote.longName || quote.shortName || quote.symbol}`);
+    console.log(`💰 ${quote.symbol}: $${quote.regularMarketPrice.toFixed(2)}`);
+    console.log(`${changeIcon} ${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%)`);
+    console.log(`📅 ${new Date().toLocaleString('en-US', { 
       month: '2-digit', 
       day: '2-digit', 
       year: 'numeric',
