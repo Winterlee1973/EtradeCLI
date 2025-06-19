@@ -18,17 +18,17 @@ const argv = yargs(hideBin(process.argv))
     argv.minPremium = 0.80;
     argv.strategy = 'today';
   })
-  .command('tomorrow', 'Scan tomorrow\'s expiration (1DTE)', {}, (argv) => {
+  .command('1', 'Scan next trading day (1DTE)', {}, (argv) => {
     argv.expiration = 1;
     argv.minDistance = 300;
     argv.minPremium = 2.00;
-    argv.strategy = 'tomorrow';
+    argv.strategy = '1dte';
   })
   .option('min-distance', { type: 'number', describe: 'Minimum distance from SPX (points)' })
   .option('min-premium', { type: 'number', describe: 'Minimum bid premium' })
   .option('expiration', { type: 'number', describe: 'Expiration index (0 = today, 1 = tomorrow)' })
   .example('$0 today', 'Scan today (200 points, $0.80 bid)')
-  .example('$0 tomorrow', 'Scan tomorrow (350 points, $2.00 bid)')
+  .example('$0 1', 'Scan next trading day (300 points, $2.00 bid)')
   .example('$0 --min-distance 300 --min-premium 1.50', 'Custom parameters')
   .argv;
 
@@ -37,9 +37,30 @@ if (!argv.strategy) {
   argv.minDistance = argv.minDistance || 300;
   argv.minPremium = argv.minPremium || 2.00;
   argv.expiration = argv.expiration !== undefined ? argv.expiration : 1;
+  argv.strategy = '1dte';
 }
 
 async function main() {
+  // Check market hours (EST/EDT)
+  const now = new Date();
+  const easternTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+  const currentHour = easternTime.getHours();
+  const currentMinute = easternTime.getMinutes();
+  const currentTime = currentHour * 100 + currentMinute; // HHMM format
+  
+  // Market hours: 9:30 AM - 4:00 PM EST/EDT (930 - 1600)
+  const isWeekend = easternTime.getDay() === 0 || easternTime.getDay() === 6;
+  const isMarketHours = currentTime >= 930 && currentTime <= 1600;
+  
+  if (isWeekend || !isMarketHours) {
+    console.log('🎯 SPX DEEP PREMIUM SCAN');
+    console.log('─────────────────────────');
+    console.log('❌ Sorry Market isn\'t opened');
+    console.log('📅 Market Hours: 9:30 AM - 4:00 PM EST');
+    console.log('');
+    return;
+  }
+  
   // Fetch data silently
   let quote, optionInfo;
   try {
@@ -64,17 +85,24 @@ async function main() {
   const expiration = optionInfo.expirationDates[argv.expiration];
   const expDate = new Date(expiration);
   const expDateStr = expDate.toLocaleDateString('en-US', { 
-    weekday: 'short', 
-    month: 'short', 
-    day: 'numeric' 
+    weekday: 'long', 
+    month: 'long', 
+    day: 'numeric',
+    year: 'numeric'
   });
+  
+  // Check if this is actually tomorrow or a different day due to holidays
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const isTomorrow = expDate.toDateString() === tomorrow.toDateString();
+  const dayNote = isTomorrow ? '(Tomorrow)' : '(Next Trading Day)';
   
   // STRICT TEMPLATE OUTPUT
   console.log('🎯 SPX DEEP PREMIUM SCAN');
   console.log('─────────────────────────');
   console.log(`⏰ Time: ${timestamp}`);
   console.log(`📈 SPX: ${spot.toFixed(2)}`);
-  console.log(`📅 Exp: ${expDateStr}`);
+  console.log(`📅 Exp: ${expDateStr} ${argv.strategy === '1dte' ? dayNote : ''}`);
   console.log(`🎲 Criteria: ${argv.minDistance}pts/${argv.minPremium.toFixed(2)}bid`);
   console.log('');
   
