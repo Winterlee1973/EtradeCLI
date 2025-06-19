@@ -35,6 +35,8 @@ function formatSPXForSlack(terminalOutput) {
     return { blocks: [{ type: 'section', text: { type: 'mrkdwn', text: 'Error: Invalid scan output' } }] };
   }
   
+  console.log('🔍 Parsing SPX output for Slack:', terminalOutput.substring(0, 200) + '...');
+  
   const lines = terminalOutput.split('\n');
   let header = {};
   let chainData = [];
@@ -235,12 +237,15 @@ function formatSPXForSlack(terminalOutput) {
     });
   }
   
-  // Add trade recommendation
+  // Add trade recommendation or no trade message
+  console.log('🎯 Trade data found:', tradeData);
+  
+  blocks.push({
+    type: 'divider'
+  });
+  
   if (tradeData.sell) {
-    blocks.push({
-      type: 'divider'
-    });
-    
+    // Trade recommended
     blocks.push({
       type: 'section',
       text: {
@@ -249,7 +254,7 @@ function formatSPXForSlack(terminalOutput) {
       }
     });
     
-    // Add action buttons with timestamp for countdown
+    // Add action buttons with timestamp
     const now = new Date();
     const timestamp = now.getTime();
     
@@ -265,6 +270,47 @@ function formatSPXForSlack(terminalOutput) {
           },
           style: 'primary',
           action_id: 'execute_trade',
+          value: timestamp.toString()
+        },
+        {
+          type: 'button', 
+          text: {
+            type: 'plain_text',
+            text: '🔄 Refresh Scan'
+          },
+          action_id: 'refresh_scan'
+        }
+      ]
+    });
+  } else {
+    // No trade recommended
+    const criteriaText = header.criteria || '300pts/2.00bid';
+    const minPremium = criteriaText.match(/(\d+\.?\d*)bid/) ? criteriaText.match(/(\d+\.?\d*)bid/)[1] : '2.00';
+    
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `*❌ Trade Not Recommended*\n$${minPremium} premium not obtained`
+      }
+    });
+    
+    // Add Trade Anyway and Refresh buttons
+    const now = new Date();
+    const timestamp = now.getTime();
+    
+    blocks.push({
+      type: 'actions',
+      block_id: `no_trade_buttons_${timestamp}`,
+      elements: [
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: '⚠️ Trade Anyway'
+          },
+          style: 'danger',
+          action_id: 'trade_anyway',
           value: timestamp.toString()
         },
         {

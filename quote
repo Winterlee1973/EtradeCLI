@@ -1,3 +1,0 @@
-#!/bin/bash
-# Quick quote wrapper
-node quote.js "$@"

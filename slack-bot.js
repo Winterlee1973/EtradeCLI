@@ -74,6 +74,7 @@ function parseMessage(text) {
   // Look for trading commands anywhere in the message
   for (let i = 0; i < words.length; i++) {
     const remainingText = words.slice(i).join(' ');
+    console.log(`🔍 Checking from position ${i}: "${remainingText}"`);
     
     // Quote command
     if (TRADING_COMMANDS.quote.test(remainingText)) {
@@ -86,6 +87,7 @@ function parseMessage(text) {
     
     // Deep premium commands
     if (TRADING_COMMANDS.deep_premium.test(remainingText)) {
+      console.log('✅ Matched deep_premium pattern for:', remainingText);
       const match = remainingText.match(TRADING_COMMANDS.deep_premium);
       return {
         type: 'trading',
@@ -214,6 +216,15 @@ app.action('refresh_scan', async ({ ack, say }) => {
   } catch (error) {
     await say(`Error refreshing scan: ${error.message}`);
   }
+});
+
+// Handle Trade Anyway button
+app.action('trade_anyway', async ({ ack, say }) => {
+  await ack();
+  
+  await say({
+    text: `⚠️ *Trade Anyway Selected*\nPlease review the option chain above and manually select a strike that meets your risk tolerance.\n\n*Warning:* Trading below recommended criteria increases risk.`
+  });
 });
 
 // Handle app mentions

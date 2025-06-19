@@ -13,12 +13,13 @@ const commands = {
   'q': ['node', 'quote.js'],
   'sdp': ['node', 'spx-deeppremium.js'],
   'deep': ['node', 'spx-deeppremium.js'],
+  'spx': ['node', 'spx-deeppremium.js'],
 };
 
 if (!command || !commands[command]) {
   console.log('Available commands:');
   console.log('  quote (or q) <symbol>     - Get stock quote');
-  console.log('  sdp, deep <args>          - Run SPX deep premium scanner');
+  console.log('  sdp, deep, spx <args>     - Run SPX deep premium scanner');
   process.exit(1);
 }
 
