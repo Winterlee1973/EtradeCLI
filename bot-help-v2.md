@@ -1,77 +1,66 @@
-# Lee's AI Trading Bot - v2
+# 🤖 Lee's AI Trading Bot - v2
 
-## :bar_chart: Quote Commands:
-• `q TSLA` or `quote AAPL` - Get current price
-• "what's SPX at?" - Natural language quotes
-• Real-time price data with change indicators
+## 📊 **Quote Commands**
+• `q TSLA` or `quote AAPL` - Get current price  
+• "what's SPX at?" - Natural language quotes  
+• Real-time price data with change indicators  
 
-## :dart: SPX Deep Premium (ADVANCED COMMANDS):
-**Required Format:** `spx td[0|1] minbid[amount] distance[points]`
+---
 
-### Conservative Strategies:
-• `spx td1 minbid2.5 distance350` - Safe premium collection
-• `spx td1 minbid3.0 distance400` - Ultra-safe, high premium
-• `spx td0 minbid1.0 distance250` - Conservative 0DTE
+## 🎯 **SPX Deep Premium Scanner** 
+*Powered by `Spx-DeepPremium.js` - Advanced Options Strategy Engine*
 
-### Balanced Strategies:
-• `spx td1 minbid2.0 distance300` - **Standard 1DTE (recommended)**
-• `spx td1 minbid1.5 distance250` - Moderate risk/reward
-• `spx td0 minbid0.8 distance200` - Standard 0DTE
+`spx WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300`
 
-### Aggressive Strategies:
-• `spx td1 minbid1.0 distance200` - Higher risk/reward
-• `spx td1 minbid0.5 distance150` - Close to money
-• `spx td0 minbid0.3 distance100` - 0DTE scalping (extreme risk)
+### **Conservative Strategies:**
+• `spx WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350` - Safe premium collection
+• `spx WHERE tradingdays=1 AND minbid>=3.00 AND distance>=400` - Ultra-safe, high premium  
+• `spx WHERE tradingdays=0 AND minbid>=1.00 AND distance>=250` - Conservative 0DTE
 
-### Market Condition Strategies:
-• `spx td1 minbid4.0 distance500` - High volatility days
-• `spx td1 minbid5.0 distance600` - Maximum premium hunting
-• `spx td1 minbid1.2 distance280` - Quiet market conditions
+### **Balanced Strategies:**
+• `spx WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300` - **Standard 1DTE (recommended)**
+• `spx WHERE tradingdays=1 AND minbid>=1.50 AND distance>=250` - Moderate risk/reward
+• `spx WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200` - Standard 0DTE
 
-**Parameters:**
-- `td1` = 1 day to expiration, `td0` = same day (0DTE)
-- `minbid2.0` = Minimum $2.00 bid requirement
-- `distance300` = 300 points below current SPX price
+### **Aggressive Strategies:**
+• `spx WHERE tradingdays=1 AND minbid>=1.00 AND distance>=200` - Higher risk/reward
+• `spx WHERE tradingdays=1 AND minbid>=0.50 AND distance>=150` - Close to money
+• `spx WHERE tradingdays=0 AND minbid>=0.30 AND distance>=100` - 0DTE scalping (extreme risk)
 
-## :clipboard: Order Management:
-• `orders` or `order status` - View all order statuses
-• Interactive buttons for trade execution
-• Real-time order tracking (filled, pending, cancelled)
+### **Market Condition Strategies:**
+• `spx WHERE tradingdays=1 AND minbid>=4.00 AND distance>=500` - High volatility days
+• `spx WHERE tradingdays=1 AND minbid BETWEEN 3.00 AND 6.00 AND distance>=300` - Premium hunting
+• `spx WHERE tradingdays=1 AND minbid>=1.20 AND distance>=280` - Quiet market conditions
 
-## :robot: Scripts (Advanced Multi-Query Analysis):
-*Coming Soon - Intelligent recommendation engine*
+### **Complex Queries:**
+• `spx WHERE tradingdays=1 AND minbid BETWEEN 2.00 AND 4.00 AND distance>=300` - Premium range targeting
+• `spx WHERE tradingdays=0 AND minbid>1.50 AND distance<=200` - Aggressive 0DTE with max distance
+• `spx WHERE tradingdays=1 AND minbid<5.00 AND distance>=500` - Deep OTM with premium limit
 
-### Market Intelligence Scripts (Future):
-• `market-scan auto-recommend` - Analyze conditions and suggest strategies
-• `intelligent-recommend current-market` - AI-powered strategy selection
-• `optimize-portfolio risk-medium` - Portfolio optimization
+---
 
-### Strategy Analysis Scripts (Future):
-• `analyze-strategies conservative balanced aggressive` - Compare approaches
-• `multi-timeframe-analysis` - Cross-timeframe market analysis
-• `risk-assessment current-strategy` - Risk evaluation and scoring
+## **Order Management**
+• `orders` - View all order statuses
 
-## :hammer_and_wrench: Current Templates:
-• **quote1** - Price display with change indicators
-• **optionschain1** - Strike/Bid/Ask/Distance grid
-• **order1** - Execution summary with safety metrics
-• **orderstatus1** - Order tracking (filled, pending, cancelled)
-• **help1** - Bot documentation and command guidance (triggers: hi, hello, help, start)
-• **recommendation1** - Intelligent suggestions (for future scripts)
-• **comparison1** - Multi-strategy analysis (for future scripts)
-• **reasoning1** - AI explanations and market analysis (for future scripts)
+---
 
-## :zap: Quick Start Examples:
-```
-q SPX                                    # Check SPX price
-spx td1 minbid2 distance300             # Standard 1DTE scan
-spx td1 minbid2.5 distance350           # Conservative scan
-spx td0 minbid0.8 distance200           # 0DTE scan
-orders                                   # Check order status
+## 🤖 **AI-Powered Natural Language**  
+*Intelligent strategy interpretation and suggestions*
+
+### ⚡ **Quick Start Examples:**
+```bash
+q SPX                                                       # Check SPX price
+spx WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300 # Standard 1DTE scan
+spx WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350 # Conservative scan
+spx WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200 # 0DTE scan
+orders                                                      # Check order status
 ```
 
-## :warning: Important Notes:
-- All SPX parameters are **REQUIRED** (no more simple `spx 1` commands)
-- Old formats will show helpful error messages
-- Refresh scan preserves your exact command parameters
-- Auto/Manual execution modes available
+### 🗣️ **Natural Language Commands:**
+```bash
+"premium possibilities going way out"     # AI interprets and suggests strategy
+"conservative spx strategy"               # Auto-generates conservative approach  
+"suggest aggressive strategies"           # Multiple strategy recommendations
+"what should I try for high volatility"  # Context-aware suggestions
+```
+

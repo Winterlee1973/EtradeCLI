@@ -112,35 +112,47 @@ node run.js q TSLA        # Direct quote
 ```
 **Claude**: "q TSLA", "what's SPX at?", "quote AAPL"
 
-### SPX Deep Premium Scanner (ADVANCED STRATEGIES)
+### SPX Deep Premium Scanner (SQL SYNTAX)
 ```bash
+# NEW SQL FORMAT (Recommended)
+node spx-deeppremium.js WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300
+node spx-deeppremium.js WHERE tradingdays=0 AND minbid>=1.50 AND distance<=250  
+node spx-deeppremium.js WHERE tradingdays=1 AND minbid BETWEEN 1.00 AND 3.00 AND distance>200
+
 # CONSERVATIVE STRATEGIES
-node spx-deeppremium.js td1 minbid2.5 distance350  # Safe premium collection
-node spx-deeppremium.js td1 minbid3.0 distance400  # Ultra-safe, premium hunting
-node spx-deeppremium.js td0 minbid1.0 distance250  # Conservative 0DTE
+node spx-deeppremium.js WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350  # Safe premium collection
+node spx-deeppremium.js WHERE tradingdays=1 AND minbid>=3.00 AND distance>=400  # Ultra-safe, premium hunting
+node spx-deeppremium.js WHERE tradingdays=0 AND minbid>=1.00 AND distance>=250  # Conservative 0DTE
 
 # BALANCED STRATEGIES  
-node spx-deeppremium.js td1 minbid2.0 distance300  # Standard 1DTE (recommended)
-node spx-deeppremium.js td1 minbid1.5 distance250  # Moderate risk/reward
-node spx-deeppremium.js td0 minbid0.8 distance200  # Standard 0DTE
+node spx-deeppremium.js WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300  # Standard 1DTE (recommended)
+node spx-deeppremium.js WHERE tradingdays=1 AND minbid>=1.50 AND distance>=250  # Moderate risk/reward
+node spx-deeppremium.js WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200  # Standard 0DTE
 
 # AGGRESSIVE STRATEGIES
-node spx-deeppremium.js td1 minbid1.0 distance200  # Higher risk/reward
-node spx-deeppremium.js td1 minbid0.5 distance150  # Close to money
-node spx-deeppremium.js td0 minbid0.3 distance100  # 0DTE scalping (extreme)
+node spx-deeppremium.js WHERE tradingdays=1 AND minbid>=1.00 AND distance>=200  # Higher risk/reward
+node spx-deeppremium.js WHERE tradingdays=1 AND minbid>=0.50 AND distance>=150  # Close to money
+node spx-deeppremium.js WHERE tradingdays=0 AND minbid>=0.30 AND distance>=100  # 0DTE scalping (extreme)
 
 # MARKET CONDITION STRATEGIES
-node spx-deeppremium.js td1 minbid4.0 distance500  # High volatility days
-node spx-deeppremium.js td1 minbid5.0 distance600  # Maximum premium hunting
-node spx-deeppremium.js td1 minbid1.2 distance280  # Quiet market conditions
+node spx-deeppremium.js WHERE tradingdays=1 AND minbid>=4.00 AND distance>=500  # High volatility days
+node spx-deeppremium.js WHERE tradingdays=1 AND minbid>=5.00 AND distance>=600  # Maximum premium hunting
+node spx-deeppremium.js WHERE tradingdays=1 AND minbid>=1.20 AND distance>=280  # Quiet market conditions
+
+# COMPLEX QUERIES
+node spx-deeppremium.js WHERE tradingdays=1 AND minbid BETWEEN 2.00 AND 4.00 AND distance>=300
+node spx-deeppremium.js WHERE tradingdays=0 AND minbid>1.50 AND distance<=200
 ```
 
-**Required Format**: `spx td[0|1] minbid[amount] distance[points]`
-- **td1** = 1 day to expiration, **td0** = same day (0DTE)
-- **minbid2.0** = Minimum $2.00 bid requirement (premium threshold)  
-- **distance300** = 300 points below current SPX price (safety buffer)
+**SQL Format**: `spx WHERE tradingdays=[0|1] AND minbid[operator][amount] AND distance[operator][points]`
+- **tradingdays=1** = 1 day to expiration, **tradingdays=0** = same day (0DTE)
+- **minbid>=2.00** = Minimum $2.00 bid requirement (premium threshold)  
+- **distance>=300** = 300+ points below current SPX price (safety buffer)
+- **Operators**: `=`, `>`, `<`, `>=`, `<=`, `BETWEEN value1 AND value2`
 
-**Claude**: Use specific strategies like "spx td1 minbid2 distance300", "conservative spx scan", "aggressive 0dte"
+**Legacy Format Still Supported**: `spx td[0|1] minbid[amount] distance[points]`
+
+**Claude**: Use SQL strategies like "spx WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300", "conservative spx scan", "aggressive 0dte", or natural language like "find premium opportunities way out"
 
 ## Current Strategies
 
@@ -148,12 +160,13 @@ node spx-deeppremium.js td1 minbid1.2 distance280  # Quiet market conditions
 - **Purpose**: Find deep OTM SPX puts with customizable premium and distance criteria
 - **Templates**: `quote1` + `optionschain1` + `order1`
 - **Output**: Current SPX price, option chain grid, execution summary
-- **Commands**: Advanced format with required parameters:
-  - Conservative: `spx td1 minbid2.5 distance350` 
-  - Standard: `spx td1 minbid2.0 distance300`
-  - Aggressive: `spx td1 minbid1.0 distance200`
-  - 0DTE: `spx td0 minbid0.8 distance200`
-- **Header Format**: `SPX DEEP PREMIUM SCAN: Manual - SPX TD1 MINBID$2.00 DISTANCE300PTS`
+- **Commands**: SQL format with flexible operators:
+  - Conservative: `WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350` 
+  - Standard: `WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300`
+  - Aggressive: `WHERE tradingdays=1 AND minbid>=1.00 AND distance>=200`
+  - 0DTE: `WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200`
+  - Complex: `WHERE tradingdays=1 AND minbid BETWEEN 2.00 AND 4.00 AND distance>=300`
+- **Header Format**: `SPX DEEP PREMIUM SCAN: Manual - SPX WHERE TRADINGDAYS=1 AND MINBID>=$2.00 AND DISTANCE>=300PTS`
 - **Strategy Types**: Conservative, Balanced, Aggressive, Market Condition, Premium Hunting
 
 ### 2. Quote (`quote`) 

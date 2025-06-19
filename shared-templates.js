@@ -418,6 +418,52 @@ export const SharedTemplates = {
           type: 'mrkdwn',
           text: `*${title}*\n${commands.map(cmd => `• ${cmd}`).join('\n')}`
         }
+      }),
+      
+      strategyButton: (label, value, style = 'primary') => ({
+        type: 'button',
+        text: {
+          type: 'plain_text',
+          text: label
+        },
+        style: style,
+        action_id: 'run_strategy',
+        value: value
+      }),
+      
+      strategySection: (title, strategies) => ({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*${title}*\n${strategies.map(s => `• \`${s.command}\` - ${s.description}`).join('\n')}`
+        }
+      }),
+      
+      strategyButtons: (strategies) => ({
+        type: 'actions',
+        elements: strategies.map(s => ({
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: s.label
+          },
+          style: s.style || 'primary',
+          action_id: 'run_strategy',
+          value: s.command
+        }))
+      }),
+      
+      orderButton: () => ({
+        type: 'actions',
+        elements: [{
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: '📋 View Orders'
+          },
+          style: 'primary',
+          action_id: 'view_orders'
+        }]
       })
     }
   },

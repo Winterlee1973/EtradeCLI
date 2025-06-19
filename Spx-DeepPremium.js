@@ -40,14 +40,145 @@ function isMarketHoliday(date) {
 
 
 // ----------------- CLI -----------------
-// New format: spx td1 minbid1 distance300
-// td1 = 1 day to expiration, minbid1 = $1.00 minimum bid, distance300 = 300 points distance
+// NEW SQL-LIKE QUERY FORMAT: 
+// spx WHERE tradingdays=1 AND minbid>2.00 AND distance=300
+// spx WHERE tradingdays=0 AND minbid>=1.50 AND distance<=250  
+// spx WHERE tradingdays=1 AND minbid BETWEEN 1.00 AND 3.00 AND distance>200
 function parseSpxCommand(args) {
+  const commandText = args.join(' ');
+  
+  // Check if it's the new SQL format
+  if (commandText.toUpperCase().includes('WHERE')) {
+    return parseSQLQuery(commandText);
+  }
+  
+  // Fallback to old format for backward compatibility
+  return parseOldFormat(args);
+}
+
+function parseSQLQuery(query) {
+  const params = {
+    expiration: null,
+    minPremium: null,
+    maxPremium: null,
+    minDistance: null,
+    maxDistance: null,
+    strategy: null,
+    queryType: 'sql'
+  };
+  
+  // Extract WHERE clause
+  const whereMatch = query.match(/WHERE\s+(.+)/i);
+  if (!whereMatch) {
+    showSQLHelp();
+    process.exit(1);
+  }
+  
+  const whereClause = whereMatch[1];
+  
+  // Parse conditions using regex to properly handle AND separators
+  // This regex splits on AND but not when it's part of BETWEEN...AND
+  const conditions = [];
+  let remaining = whereClause;
+  let inBetween = false;
+  
+  // First pass: identify BETWEEN clauses to protect them
+  const betweenRegex = /(\w+\s+BETWEEN\s+[\d.]+\s+AND\s+[\d.]+)/gi;
+  const betweenClauses = [];
+  let match;
+  
+  while ((match = betweenRegex.exec(whereClause)) !== null) {
+    betweenClauses.push(match[1]);
+  }
+  
+  // Replace BETWEEN clauses with placeholders
+  betweenClauses.forEach((clause, index) => {
+    remaining = remaining.replace(clause, `__BETWEEN_${index}__`);
+  });
+  
+  // Split on AND (now safe since BETWEEN...AND is protected)
+  const parts = remaining.split(/\s+AND\s+/i);
+  
+  // Restore BETWEEN clauses
+  parts.forEach(part => {
+    let restored = part.trim();
+    betweenClauses.forEach((clause, index) => {
+      restored = restored.replace(`__BETWEEN_${index}__`, clause);
+    });
+    if (restored) {
+      conditions.push(restored);
+    }
+  });
+  
+  for (const condition of conditions) {
+    const trimmed = condition.trim();
+    
+    // Handle BETWEEN operator
+    if (trimmed.match(/minbid\s+BETWEEN\s+([\d.]+)\s+AND\s+([\d.]+)/i)) {
+      const match = trimmed.match(/minbid\s+BETWEEN\s+([\d.]+)\s+AND\s+([\d.]+)/i);
+      params.minPremium = parseFloat(match[1]);
+      params.maxPremium = parseFloat(match[2]);
+    }
+    // Handle comparison operators for minbid  
+    else if (trimmed.match(/minbid\s*([><=]+)\s*([\d.]+)/i)) {
+      const match = trimmed.match(/minbid\s*([><=]+)\s*([\d.]+)/i);
+      const operator = match[1];
+      const value = parseFloat(match[2]);
+      
+      
+      if (operator === '>' || operator === '>=') {
+        params.minPremium = operator === '>' ? value : value;
+      } else if (operator === '<' || operator === '<=') {
+        params.maxPremium = operator === '<' ? value : value;
+      } else if (operator === '=') {
+        params.minPremium = value;
+        params.maxPremium = value;
+      }
+    }
+    // Handle comparison operators for distance
+    else if (trimmed.match(/distance\s*([><=]+)\s*(\d+)/i)) {
+      const match = trimmed.match(/distance\s*([><=]+)\s*(\d+)/i);
+      const operator = match[1];
+      const value = parseInt(match[2]);
+      
+      if (operator === '>' || operator === '>=') {
+        params.minDistance = operator === '>' ? value + 1 : value;
+      } else if (operator === '<' || operator === '<=') {
+        params.maxDistance = operator === '<' ? value - 1 : value;
+      } else if (operator === '=') {
+        params.minDistance = value;
+        params.maxDistance = value;
+      }
+    }
+    // Handle tradingdays
+    else if (trimmed.match(/tradingdays\s*=\s*(\d+)/i)) {
+      const match = trimmed.match(/tradingdays\s*=\s*(\d+)/i);
+      params.expiration = parseInt(match[1]);
+      params.strategy = params.expiration === 0 ? '0dte' : '1dte';
+    }
+  }
+  
+  // Validate required parameters
+  if (params.expiration === null) {
+    console.error('❌ Error: tradingdays parameter is required');
+    showSQLHelp();
+    process.exit(1);
+  }
+  
+  // Set defaults if not specified
+  if (params.minPremium === null) params.minPremium = 0.10;
+  if (params.minDistance === null) params.minDistance = 100;
+  
+  return params;
+}
+
+function parseOldFormat(args) {
   const params = {
     expiration: null,
     minPremium: null,
     minDistance: null,
-    strategy: null
+    strategy: null,
+    queryType: 'old'
   };
   
   for (const arg of args) {
@@ -62,17 +193,72 @@ function parseSpxCommand(args) {
     }
   }
   
-  // Validate required parameters
+  // Validate required parameters for old format
   if (params.expiration === null || params.minPremium === null || params.minDistance === null) {
     console.error('❌ Error: SPX strategy requires all parameters');
-    console.error('Format: spx td1 minbid1 distance300');
-    console.error('Examples:');
-    console.error('  spx td1 minbid2 distance300    - 1DTE, $2.00 min bid, 300 points out');
-    console.error('  spx td0 minbid0.8 distance200  - 0DTE, $0.80 min bid, 200 points out');
+    showSQLHelp();
     process.exit(1);
   }
   
   return params;
+}
+
+function showSQLHelp() {
+  console.error('🔍 SPX SQL Query Format:');
+  console.error('');
+  console.error('NEW SQL FORMAT (Recommended):');
+  console.error('  spx WHERE tradingdays=1 AND minbid>2.00 AND distance=300');
+  console.error('  spx WHERE tradingdays=0 AND minbid>=1.50 AND distance<=250');
+  console.error('  spx WHERE tradingdays=1 AND minbid BETWEEN 1.00 AND 3.00 AND distance>200');
+  console.error('');
+  console.error('OLD FORMAT (Still supported):');
+  console.error('  spx td1 minbid2 distance300');
+  console.error('  spx td0 minbid0.8 distance200');
+  console.error('');
+  console.error('SQL OPERATORS:');
+  console.error('  = (equals), > (greater than), < (less than)');
+  console.error('  >= (greater than or equal), <= (less than or equal)');
+  console.error('  BETWEEN value1 AND value2');
+  console.error('');
+  console.error('PARAMETERS:');
+  console.error('  tradingdays: 0 (0DTE) or 1 (1DTE)');
+  console.error('  minbid: minimum bid amount (e.g., 2.00 for $2.00)');
+  console.error('  distance: points below current SPX price');
+}
+
+function formatCommandString(argv) {
+  if (argv.queryType === 'sql') {
+    let parts = [`TRADINGDAYS=${argv.expiration}`];
+    
+    if (argv.minPremium !== null && argv.maxPremium !== null) {
+      if (argv.minPremium === argv.maxPremium) {
+        parts.push(`MINBID=$${argv.minPremium.toFixed(2)}`);
+      } else {
+        parts.push(`MINBID BETWEEN $${argv.minPremium.toFixed(2)} AND $${argv.maxPremium.toFixed(2)}`);
+      }
+    } else if (argv.minPremium !== null) {
+      parts.push(`MINBID>=$${argv.minPremium.toFixed(2)}`);
+    } else if (argv.maxPremium !== null) {
+      parts.push(`MINBID<=$${argv.maxPremium.toFixed(2)}`);
+    }
+    
+    if (argv.minDistance !== null && argv.maxDistance !== null) {
+      if (argv.minDistance === argv.maxDistance) {
+        parts.push(`DISTANCE=${argv.minDistance}PTS`);
+      } else {
+        parts.push(`DISTANCE BETWEEN ${argv.minDistance}PTS AND ${argv.maxDistance}PTS`);
+      }
+    } else if (argv.minDistance !== null) {
+      parts.push(`DISTANCE>=${argv.minDistance}PTS`);
+    } else if (argv.maxDistance !== null) {
+      parts.push(`DISTANCE<=${argv.maxDistance}PTS`);
+    }
+    
+    return `SPX WHERE ${parts.join(' AND ')}`;
+  } else {
+    // Old format
+    return `SPX TD${argv.expiration} MINBID$${argv.minPremium.toFixed(2)} DISTANCE${argv.minDistance}PTS`;
+  }
 }
 
 const rawArgs = process.argv.slice(2);
@@ -143,7 +329,7 @@ async function main() {
     if (!foundToday) {
       const isAutoScheduled = process.env.AUTO_SCHEDULED === 'true';
       const runType = isAutoScheduled ? 'Auto Scheduled' : 'Manual';
-      const commandStr = `SPX TD${argv.expiration} MINBID$${argv.minPremium.toFixed(2)} DISTANCE${argv.minDistance}PTS`;
+      const commandStr = formatCommandString(argv);
       console.log(`🎯 SPX DEEP PREMIUM SCAN: ${runType} - ${commandStr.toUpperCase()}`);
       console.log('─────────────────────────');
       console.log(`⏰ Time: ${timestamp}`);
@@ -210,7 +396,7 @@ async function main() {
   // STRICT TEMPLATE OUTPUT using SharedTemplates
   const isAutoScheduled = process.env.AUTO_SCHEDULED === 'true';
   const runType = isAutoScheduled ? 'Auto Scheduled' : 'Manual';
-  const commandStr = `SPX TD${argv.expiration} MINBID$${argv.minPremium.toFixed(2)} DISTANCE${argv.minDistance}PTS`;
+  const commandStr = formatCommandString(argv);
   
   console.log(`🎯 SPX DEEP PREMIUM SCAN: ${runType} - ${commandStr.toUpperCase()}`);
   console.log('─────────────────────────');
@@ -242,10 +428,21 @@ async function main() {
   }));
   
   // 3) Filter for deep OTM opportunities
-  const opportunities = records.filter(r => 
-    r.distance_from_spx >= argv.minDistance && 
-    r.bid >= argv.minPremium
-  );
+  const opportunities = records.filter(r => {
+    // Distance filtering
+    let distanceOk = true;
+    const minDist = argv.minDistance || 0;
+    const maxDist = argv.maxDistance || Infinity;
+    if (r.distance_from_spx < minDist || r.distance_from_spx > maxDist) distanceOk = false;
+    
+    // Premium filtering  
+    let premiumOk = true;
+    const minPrem = argv.minPremium || 0;
+    const maxPrem = argv.maxPremium || Infinity;
+    if (r.bid < minPrem || r.bid > maxPrem) premiumOk = false;
+    
+    return distanceOk && premiumOk;
+  });
   
   // Sort all puts by strike for grid display
   const allPuts = records.sort((a, b) => a.strike - b.strike);

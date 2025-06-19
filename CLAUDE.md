@@ -24,39 +24,46 @@ When the user asks for market data or trading strategies, use these shortcuts:
 - Run quotes immediately without asking for permission
 
 
-### SPX Deep Premium Scanner (ADVANCED FORMAT REQUIRED)
-**New Required Format:** `spx td1 minbid2 distance300`
+### SPX Deep Premium Scanner (SQL FORMAT)
+**New SQL Format:** `spx WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300`
+**Shell Usage:** `node spx-deeppremium.js 'WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300'`
 
 #### Quick Command Reference:
-- **Conservative:** `spx td1 minbid2.5 distance350` - Safe premium collection
-- **Standard:** `spx td1 minbid2.0 distance300` - Recommended 1DTE strategy  
-- **Aggressive:** `spx td1 minbid1.0 distance200` - Higher risk/reward
-- **0DTE Safe:** `spx td0 minbid0.8 distance200` - Same day expiration
-- **High Vol:** `spx td1 minbid4.0 distance500` - Crazy market days
-- **Premium Hunt:** `spx td1 minbid5.0 distance600` - Maximum premium focus
+- **Conservative:** `spx WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350` - Safe premium collection
+- **Standard:** `spx WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300` - Recommended 1DTE strategy  
+- **Aggressive:** `spx WHERE tradingdays=1 AND minbid>=1.00 AND distance>=200` - Higher risk/reward
+- **0DTE Safe:** `spx WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200` - Same day expiration
+- **High Vol:** `spx WHERE tradingdays=1 AND minbid>=4.00 AND distance>=500` - Crazy market days
+- **Premium Hunt:** `spx WHERE tradingdays=1 AND minbid>=5.00 AND distance>=600` - Maximum premium focus
 
 #### Strategy Categories:
 **Conservative Strategies:**
-- `spx td1 minbid2.5 distance350` - High premium, far OTM (safer)
-- `spx td1 minbid3.0 distance400` - Premium hunting, ultra-safe distance
-- `spx td0 minbid1.0 distance250` - 0DTE conservative with decent premium
+- `spx WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350` - High premium, far OTM (safer)
+- `spx WHERE tradingdays=1 AND minbid>=3.00 AND distance>=400` - Premium hunting, ultra-safe distance
+- `spx WHERE tradingdays=0 AND minbid>=1.00 AND distance>=250` - 0DTE conservative with decent premium
 
 **Balanced Strategies:**
-- `spx td1 minbid2.0 distance300` - Standard 1DTE strategy (recommended)
-- `spx td1 minbid1.5 distance250` - Moderate risk, decent premium
-- `spx td0 minbid0.8 distance200` - Standard 0DTE strategy
+- `spx WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300` - Standard 1DTE strategy (recommended)
+- `spx WHERE tradingdays=1 AND minbid>=1.50 AND distance>=250` - Moderate risk, decent premium
+- `spx WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200` - Standard 0DTE strategy
 
 **Aggressive Strategies:**
-- `spx td1 minbid1.0 distance200` - Closer strikes, lower premium threshold
-- `spx td1 minbid0.5 distance150` - High risk/reward, close to money
-- `spx td0 minbid0.3 distance100` - 0DTE scalping (extreme risk)
+- `spx WHERE tradingdays=1 AND minbid>=1.00 AND distance>=200` - Closer strikes, lower premium threshold
+- `spx WHERE tradingdays=1 AND minbid>=0.50 AND distance>=150` - High risk/reward, close to money
+- `spx WHERE tradingdays=0 AND minbid>=0.30 AND distance>=100` - 0DTE scalping (extreme risk)
+
+**Complex Queries:**
+- `spx WHERE tradingdays=1 AND minbid BETWEEN 2.00 AND 4.00 AND distance>=300` - Premium range targeting
+- `spx WHERE tradingdays=0 AND minbid>1.50 AND distance<=200` - Aggressive 0DTE with max distance
+- `spx WHERE tradingdays=1 AND minbid<5.00 AND distance>=500` - Deep OTM with premium limit
 
 #### Parameters Explained:
-- **td1** = Time to expiration (1 day), **td0** = same day (0DTE)
-- **minbid2.0** = Minimum $2.00 bid requirement (premium threshold)
-- **distance300** = 300 points below current SPX price (safety buffer)
+- **tradingdays=1** = Time to expiration (1 day), **tradingdays=0** = same day (0DTE)
+- **minbid>=2.00** = Minimum $2.00 bid requirement (premium threshold)
+- **distance>=300** = 300+ points below current SPX price (safety buffer)
+- **Operators**: `=`, `>`, `<`, `>=`, `<=`, `BETWEEN value1 AND value2`
 
-**All parameters are REQUIRED** - old simple formats (spx 1, spx 0) will show error
+**Legacy Format Still Supported**: `spx td1 minbid2 distance300`
 
 ### Future Scripts (Not Yet Implemented)
 When these become available, use for complex analysis:

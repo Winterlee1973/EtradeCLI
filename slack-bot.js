@@ -16,15 +16,192 @@ const execAsync = promisify(exec);
 // Global state for refresh functionality
 let lastSpxCommand = 'node spx-deeppremium.js td1 minbid2 distance300'; // Default fallback
 
-// Load v2 help message
+// Load v2 help message as Slack blocks
 function getV2HelpMessage() {
-  try {
-    const helpContent = fs.readFileSync('./bot-help-v2.md', 'utf8');
-    return helpContent;
-  } catch (error) {
-    console.error('Could not load bot-help-v2.md:', error);
-    return `# Lee's AI Trading Bot - v2\n\nBot help is available. Use trading commands like:\n• \`q TSLA\` - Get quote\n• \`spx td1 minbid2 distance300\` - SPX scan\n• \`orders\` - Check order status`;
-  }
+  return {
+    blocks: [
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: '🤖 Lee\'s AI Trading Bot - v2'
+        }
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '*📊 Quote Commands*\n• `q TSLA` or `quote AAPL` - Get current price\n• "what\'s SPX at?" - Natural language quotes\n• Real-time price data with change indicators'
+        }
+      },
+      {
+        type: 'divider'
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '*🎯 SPX Deep Premium Scanner*\n_Powered by `Spx-DeepPremium.js` - Advanced Options Strategy Engine_\n\n`spx WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300`'
+        }
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '*Conservative Strategies:*\n• `spx WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350` - Safe premium collection\n• `spx WHERE tradingdays=1 AND minbid>=3.00 AND distance>=400` - Ultra-safe, high premium\n• `spx WHERE tradingdays=0 AND minbid>=1.00 AND distance>=250` - Conservative 0DTE'
+        }
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            text: {
+              type: 'plain_text',
+              text: '🛡️ Safe Strategy'
+            },
+            style: 'primary',
+            action_id: 'run_strategy',
+            value: 'WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350'
+          },
+          {
+            type: 'button',
+            text: {
+              type: 'plain_text',
+              text: '🔒 Ultra-Safe'
+            },
+            action_id: 'run_strategy',
+            value: 'WHERE tradingdays=1 AND minbid>=3.00 AND distance>=400'
+          },
+          {
+            type: 'button',
+            text: {
+              type: 'plain_text',
+              text: '⚡ 0DTE Safe'
+            },
+            action_id: 'run_strategy',
+            value: 'WHERE tradingdays=0 AND minbid>=1.00 AND distance>=250'
+          }
+        ]
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '*Balanced Strategies:*\n• `spx WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300` - **Standard 1DTE (recommended)**\n• `spx WHERE tradingdays=1 AND minbid>=1.50 AND distance>=250` - Moderate risk/reward\n• `spx WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200` - Standard 0DTE'
+        }
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            text: {
+              type: 'plain_text',
+              text: '⭐ Standard (Recommended)'
+            },
+            style: 'primary',
+            action_id: 'run_strategy',
+            value: 'WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300'
+          },
+          {
+            type: 'button',
+            text: {
+              type: 'plain_text',
+              text: '⚖️ Moderate'
+            },
+            action_id: 'run_strategy',
+            value: 'WHERE tradingdays=1 AND minbid>=1.50 AND distance>=250'
+          },
+          {
+            type: 'button',
+            text: {
+              type: 'plain_text',
+              text: '⚡ 0DTE Standard'
+            },
+            action_id: 'run_strategy',
+            value: 'WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200'
+          }
+        ]
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '*Aggressive Strategies:*\n• `spx WHERE tradingdays=1 AND minbid>=1.00 AND distance>=200` - Higher risk/reward\n• `spx WHERE tradingdays=1 AND minbid>=0.50 AND distance>=150` - Close to money\n• `spx WHERE tradingdays=0 AND minbid>=0.30 AND distance>=100` - 0DTE scalping (extreme risk)'
+        }
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            text: {
+              type: 'plain_text',
+              text: '🚀 Aggressive'
+            },
+            style: 'danger',
+            action_id: 'run_strategy',
+            value: 'WHERE tradingdays=1 AND minbid>=1.00 AND distance>=200'
+          },
+          {
+            type: 'button',
+            text: {
+              type: 'plain_text',
+              text: '⚠️ Close to Money'
+            },
+            style: 'danger',
+            action_id: 'run_strategy',
+            value: 'WHERE tradingdays=1 AND minbid>=0.50 AND distance>=150'
+          },
+          {
+            type: 'button',
+            text: {
+              type: 'plain_text',
+              text: '💥 Extreme 0DTE'
+            },
+            style: 'danger',
+            action_id: 'run_strategy',
+            value: 'WHERE tradingdays=0 AND minbid>=0.30 AND distance>=100'
+          }
+        ]
+      },
+      {
+        type: 'divider'
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '*Order Management*'
+        }
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            text: {
+              type: 'plain_text',
+              text: '📋 View Orders'
+            },
+            style: 'primary',
+            action_id: 'view_orders'
+          }
+        ]
+      },
+      {
+        type: 'divider'
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '*🤖 AI-Powered Natural Language*\n_Intelligent strategy interpretation and suggestions_\n\n*Quick Start Examples:*\n```\nq SPX                                                       # Check SPX price\nspx WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300 # Standard 1DTE scan\nspx WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350 # Conservative scan\nspx WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200 # 0DTE scan\norders                                                      # Check order status\n```\n\n*Natural Language Commands:*\n```\n"premium possibilities going way out"     # AI interprets and suggests strategy\n"conservative spx strategy"               # Auto-generates conservative approach  \n"suggest aggressive strategies"           # Multiple strategy recommendations\n"what should I try for high volatility"  # Context-aware suggestions\n```'
+        }
+      }
+    ]
+  };
 }
 
 // Initialize Slack app
@@ -47,7 +224,8 @@ const TRADING_COMMANDS = {
   spx_strategy: /^spx\s+(td[01])\s+(minbid[\d.]+)\s+(distance\d+)$/i,
   orders: /^orders?$/i,
   orders_open: /^orders?\s+open$/i,
-  orders_closed: /^orders?\s+closed$/i
+  orders_closed: /^orders?\s+closed$/i,
+  help: /^help$/i
 };
 
 // Execute trading commands
@@ -84,66 +262,43 @@ function parseMessage(text) {
   const cleanText = text.trim();
   const lowerText = cleanText.toLowerCase();
   
-  // Handle greeting messages with v2 help
-  if (lowerText === 'hi' || lowerText === 'hello' || lowerText === 'help' || lowerText === 'start') {
+  // Handle help command and greetings
+  if (lowerText === 'help' || lowerText === 'hi' || lowerText === 'hello' || lowerText === 'start') {
     return { type: 'help', message: 'v2' };
   }
   
-  // Extract potential trading commands from anywhere in the message
-  const words = cleanText.split(/\s+/);
-  
-  // Look for trading commands anywhere in the message
-  for (let i = 0; i < words.length; i++) {
-    const remainingText = words.slice(i).join(' ');
-    console.log(`🔍 Checking from position ${i}: "${remainingText}"`);
-    
-    // Quote command
-    if (TRADING_COMMANDS.quote.test(remainingText)) {
-      const match = remainingText.match(TRADING_COMMANDS.quote);
-      return {
-        type: 'trading',
-        command: `node run.js q ${match[2].toUpperCase()}`
-      };
-    }
-    
-    // SPX strategy command (new format: spx td1 minbid2 distance300)
-    if (TRADING_COMMANDS.spx_strategy.test(remainingText)) {
-      console.log('✅ Matched spx_strategy pattern for:', remainingText);
-      const match = remainingText.match(TRADING_COMMANDS.spx_strategy);
-      return {
-        type: 'trading',
-        command: `node spx-deeppremium.js ${match[1]} ${match[2]} ${match[3]}`
-      };
-    }
-    
-    // Orders commands
-    if (TRADING_COMMANDS.orders_open.test(remainingText)) {
-      return {
-        type: 'orders',
-        filter: 'open'
-      };
-    }
-    
-    if (TRADING_COMMANDS.orders_closed.test(remainingText)) {
-      return {
-        type: 'orders',
-        filter: 'closed'
-      };
-    }
-    
-    if (TRADING_COMMANDS.orders.test(remainingText)) {
-      return {
-        type: 'orders',
-        filter: 'all'
-      };
-    }
+  // Check for direct SQL SPX commands first (highest priority)
+  if (lowerText.startsWith('spx where') || lowerText.match(/^spx\s+td[01]\s+minbid[\d.]+\s+distance\d+$/i)) {
+    return {
+      type: 'trading',
+      command: `node spx-deeppremium.js ${cleanText.replace(/^spx\s+/i, '')}`
+    };
   }
   
-  // Default to Claude conversation
-  return {
-    type: 'claude',
-    message: cleanText
-  };
+  // Check for quote commands
+  if (TRADING_COMMANDS.quote.test(cleanText)) {
+    const match = cleanText.match(TRADING_COMMANDS.quote);
+    return {
+      type: 'trading',
+      command: `node run.js q ${match[2].toUpperCase()}`
+    };
+  }
+  
+  // Check for order commands
+  if (TRADING_COMMANDS.orders_open.test(cleanText)) {
+    return { type: 'orders', filter: 'open' };
+  }
+  
+  if (TRADING_COMMANDS.orders_closed.test(cleanText)) {
+    return { type: 'orders', filter: 'closed' };
+  }
+  
+  if (TRADING_COMMANDS.orders.test(cleanText)) {
+    return { type: 'orders', filter: 'all' };
+  }
+  
+  // Everything else goes to AI conversation
+  return { type: 'claude', message: cleanText };
 }
 
 // Handle messages
@@ -206,9 +361,7 @@ app.message(async ({ message, say }) => {
     } else if (parsed.type === 'help') {
       console.log('📖 Sending v2 help message');
       const helpMessage = getV2HelpMessage();
-      await say({
-        text: helpMessage
-      });
+      await say(helpMessage);
       console.log('📤 Sent v2 help message to Slack');
     } else {
       console.log('🤖 Sending to Claude:', parsed.message);
@@ -234,6 +387,60 @@ app.message(async ({ message, say }) => {
   } catch (error) {
     console.error('❌ Error handling message:', error);
     await say(`Error: ${error.message}`);
+  }
+});
+
+// Handle strategy button clicks
+app.action('run_strategy', async ({ ack, say, body }) => {
+  await ack();
+  
+  try {
+    const sqlWhere = body.actions[0].value;
+    console.log('🚀 Running strategy:', sqlWhere);
+    
+    // Execute the SPX command
+    const cmd = `node spx-deeppremium.js ${sqlWhere}`;
+    const result = await executeCommand(cmd);
+    
+    // Save command for refresh functionality
+    lastSpxCommand = cmd;
+    
+    // Format and send result
+    const formattedResult = formatForSlack(result);
+    
+    if (formattedResult && formattedResult.blocks) {
+      await say({
+        text: `Strategy executed: ${sqlWhere}`,
+        blocks: formattedResult.blocks
+      });
+    } else {
+      await say({
+        text: formattedResult || result
+      });
+    }
+    
+    console.log('📤 Sent strategy result to Slack');
+  } catch (error) {
+    await say({
+      text: `❌ Error running strategy: ${error.message}`
+    });
+  }
+});
+
+// Handle view orders button click
+app.action('view_orders', async ({ ack, say }) => {
+  await ack();
+  
+  try {
+    const result = await executeCommand('node order-status.js');
+    await say({
+      text: result
+    });
+    console.log('📤 Sent order status to Slack');
+  } catch (error) {
+    await say({
+      text: `❌ Error getting orders: ${error.message}`
+    });
   }
 });
 
@@ -570,7 +777,7 @@ app.event('app_mention', async ({ event, say }) => {
       console.log('📖 Sending v2 help message (mention)');
       const helpMessage = getV2HelpMessage();
       await say({
-        text: helpMessage,
+        ...helpMessage,
         channel: event.channel
       });
       console.log('📤 Sent v2 help message to Slack (mention)');
