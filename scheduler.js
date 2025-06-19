@@ -30,7 +30,7 @@ export async function startScheduler(slackApp) {
   cron.schedule('40 9 * * 2,3,4', async () => {
     console.log('🌅 Running 0DTE alert (Tue/Wed/Thu 9:40 AM)...');
     try {
-      const { stdout } = await execAsync('node spx-deeppremium.js 0');
+      const { stdout } = await execAsync('AUTO_SCHEDULED=true node spx-deeppremium.js 0');
       
       await slackApp.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
@@ -72,7 +72,7 @@ export async function startScheduler(slackApp) {
   cron.schedule('50 15 * * 5', async () => {
     console.log('🌆 Running 1DTE alert (Friday 3:50 PM)...');
     try {
-      const { stdout } = await execAsync('node spx-deeppremium.js 1');
+      const { stdout } = await execAsync('AUTO_SCHEDULED=true node spx-deeppremium.js 1');
       
       await slackApp.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
@@ -116,7 +116,7 @@ export async function startScheduler(slackApp) {
     const timestamp = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
     
     try {
-      const { stdout } = await execAsync('node spx-deeppremium.js 1');
+      const { stdout } = await execAsync('AUTO_SCHEDULED=true node spx-deeppremium.js 1');
       
       await slackApp.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,

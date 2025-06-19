@@ -191,8 +191,14 @@ async function main() {
   const dayNote = isTomorrow ? '(Tomorrow)' : '(Next Trading Day)';
   
   // STRICT TEMPLATE OUTPUT
-  console.log('🎯 SPX DEEP PREMIUM SCAN');
+  const isAutoScheduled = process.env.AUTO_SCHEDULED === 'true';
+  const commandStr = isAutoScheduled ? 
+    `spx ${argv.expiration}${argv.targetBid ? ` ${argv.targetBid}` : ''}` : 
+    `spx ${argv.expiration}${argv.targetBid ? ` ${argv.targetBid}` : ''}`;
+  
+  console.log(`🎯 SPX DEEP PREMIUM SCAN${isAutoScheduled ? ' - Auto Scheduled' : ''}`);
   console.log('─────────────────────────');
+  console.log(`🤖 Command: ${commandStr}`);
   console.log(`⏰ Time: ${timestamp}`);
   console.log(`📈 SPX: ${spot.toFixed(2)} (${marketStatus})`);
   console.log(`📅 Exp: ${expDateStr} ${argv.strategy === '1dte' ? dayNote : ''}`);
