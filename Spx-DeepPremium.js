@@ -108,23 +108,64 @@ async function main() {
   // Find the right expiration date, skipping weekends
   let expiration, expDate;
   if (argv.expiration === 0) {
-    // 0DTE - use today's expiration
-    expiration = optionInfo.expirationDates[0];
-    expDate = new Date(expiration);
-  } else {
-    // 1DTE - find next trading day based on market status
-    let targetDate = new Date();
+    // 0DTE - check if today has an expiration and if market is open
+    const today = new Date();
+    const todayStr = today.toDateString();
     
-    // Since SPX options don't expire every day, find the next available expiration
-    // that falls on a trading day
-    for (let i = 1; i < optionInfo.expirationDates.length; i++) {
-      const testDate = new Date(optionInfo.expirationDates[i]);
-      const dayOfWeek = testDate.getDay();
+    // Look for today's expiration in the available dates
+    let foundToday = false;
+    for (let i = 0; i < optionInfo.expirationDates.length; i++) {
+      const testExp = optionInfo.expirationDates[i];
+      const utcDate = new Date(testExp);
+      const properDate = new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate());
       
-      // Skip weekends and holidays
-      if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isMarketHoliday(testDate)) {
-        expiration = optionInfo.expirationDates[i];
-        expDate = testDate;
+      if (properDate.toDateString() === todayStr) {
+        expiration = testExp;
+        expDate = properDate;
+        foundToday = true;
+        break;
+      }
+    }
+    
+    // If no same-day expiration found, show message and exit
+    if (!foundToday) {
+      console.log('🎯 SPX DEEP PREMIUM SCAN');
+      console.log('─────────────────────────');
+      console.log(`⏰ Time: ${timestamp}`);
+      console.log(`📈 SPX: ${spot.toFixed(2)} (${marketStatus})`);
+      console.log(`📅 0DTE: No same-day expiration available`);
+      console.log('');
+      console.log('💡 SUGGESTED TRADE:');
+      console.log('   ❌ NO');
+      console.log('');
+      return;
+    }
+    
+    // If market is closed, show message and exit
+    if (marketStatus === 'CLOSED') {
+      console.log('🎯 SPX DEEP PREMIUM SCAN');
+      console.log('─────────────────────────');
+      console.log(`⏰ Time: ${timestamp}`);
+      console.log(`📈 SPX: ${spot.toFixed(2)} (${marketStatus})`);
+      console.log(`📅 0DTE: Market closed`);
+      console.log('');
+      console.log('💡 SUGGESTED TRADE:');
+      console.log('   ❌ NO');
+      console.log('');
+      return;
+    }
+  } else {
+    // 1DTE - find next trading day's expiration  
+    // Start from index 0 since it could be tomorrow's expiration
+    for (let i = 0; i < optionInfo.expirationDates.length; i++) {
+      const testExp = optionInfo.expirationDates[i];
+      const utcDate = new Date(testExp);
+      const properDate = new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate());
+      
+      // Skip weekends and holidays, and only use dates after today
+      if (properDate > new Date() && properDate.getDay() !== 0 && properDate.getDay() !== 6 && !isMarketHoliday(properDate)) {
+        expiration = testExp;
+        expDate = properDate;
         break;
       }
     }
@@ -200,7 +241,12 @@ async function main() {
     // Sort by highest premium and find best
     premiumStrikes.sort((a, b) => b.bid - a.bid);
     best = premiumStrikes[0];
-    bestIndex = allPuts.findIndex(p => p.strike === best.strike);
+    
+    // Center display around the target distance area where we expect to find qualifying strikes
+    const targetStrike = Math.floor((spot - argv.minDistance) / 5) * 5;
+    bestIndex = allPuts.findIndex(p => p.strike >= targetStrike);
+    if (bestIndex === -1) bestIndex = allPuts.length - 5;
+    if (bestIndex < 4) bestIndex = 4;
     
     // Check if any premium strikes meet distance criteria for opportunities
     opportunities.length = 0; // Clear and rebuild based on both criteria
@@ -213,23 +259,6 @@ async function main() {
     if (bestIndex < 4) bestIndex = 4;
   }
   
-  // RESULTS SECTION
-  console.log('📊 RESULTS:');
-  if (premiumStrikes.length > 0) {
-    console.log(`💰 Premium strikes ($${argv.minPremium.toFixed(2)}+): ${premiumStrikes.length}`);
-    console.log(`🎯 Best premium: ${best.strike}P @ ${best.bid.toFixed(2)}`);
-    console.log(`📏 Distance: ${best.distance_from_spx.toFixed(0)}pts`);
-    
-    // Check if best qualifies by distance
-    if (best.distance_from_spx >= argv.minDistance) {
-      console.log(`✅ Qualifies: >${argv.minDistance}pts + $${argv.minPremium.toFixed(2)}bid`);
-    } else {
-      console.log(`❌ Too close: Only ${best.distance_from_spx.toFixed(0)}pts (need ${argv.minDistance}pts)`);
-    }
-  } else {
-    console.log(`❌ No strikes with $${argv.minPremium.toFixed(2)}+ premium found`);
-  }
-  console.log('');
   
   console.log('📋 CHAIN:');
   console.log('Strike  Bid   Ask   Dist');
@@ -241,14 +270,12 @@ async function main() {
   
   for (let i = startIdx; i <= endIdx; i++) {
     const put = allPuts[i];
-    const isSelected = best && i === bestIndex;
     const hasPremium = put.bid >= argv.minPremium;
     const hasDistance = put.distance_from_spx >= argv.minDistance;
     const fullyQualifies = hasPremium && hasDistance;
     
     let marker = ' ';
-    if (isSelected) marker = '→';
-    else if (fullyQualifies) marker = '✅';
+    if (fullyQualifies) marker = '✅';
     else if (hasPremium) marker = '💰';
     
     console.log(
@@ -267,16 +294,10 @@ async function main() {
     console.log(`   🎯 SELL 1x ${bestQualified.strike}P`);
     console.log(`   💰 Premium: $${bestQualified.bid.toFixed(2)}`);
     console.log(`   📊 Credit: $${(bestQualified.bid * 100).toFixed(0)}`);
-    console.log('   ✅ EXECUTION READY');
+    console.log('   ✅ YES');
   } else {
     console.log('💡 SUGGESTED TRADE:');
-    console.log('   ⚠️  NO TRADE RECOMMENDED');
-    if (premiumStrikes.length > 0) {
-      console.log('   📉 Premium found but too close to SPX');
-    } else {
-      console.log('   📉 No premium strikes found');
-    }
-    console.log('   🔄 Try different parameters');
+    console.log('   ❌ NO');
   }
   console.log('');
 }
