@@ -11,10 +11,10 @@ When the user asks for market data or trading strategies, use these shortcuts:
 - Run quotes immediately without asking for permission
 
 
-### SPX Deep Premium Scanner (SDP)
-- "sdp 0" → Run: `node spx-deeppremium.js 0` (200+ points, $0.80+ bid)
-- "sdp 1" → Run: `node spx-deeppremium.js 1` (300+ points, $2.00+ bid)
-- "sdp" or "find deep puts" → Run: `node spx-deeppremium.js` (default 1DTE settings)
+### SPX Deep Premium Scanner
+- "spx 0" → Run: `node spx-deeppremium.js 0` (200+ points, $0.80+ bid)
+- "spx 1" → Run: `node spx-deeppremium.js 1` (300+ points, $2.00+ bid)
+- "find deep puts" → Run: `node spx-deeppremium.js` (default 1DTE settings)
 - Custom: `node spx-deeppremium.js --min-distance 250 --min-premium 1.50`
 - **Execution-Ready Strategies:**
   - 0DTE: 200+ points out with $0.80+ bid (today's expiration)
@@ -35,11 +35,11 @@ Claude: Runs `node run.js q TSLA` and reports: "Tesla (TSLA) is trading at $323.
 
 ### Example 2: SPX Put Selling
 User: "show me deep puts"
-Claude: Runs `node spx-deeppremium.js 0` and reports:
-"SPX is at $6003. Scanning for 0DTE opportunities (200+ points out, $0.80+ bid):
-✅ FOUND: 2 qualifying opportunities
-💰 BEST: 5775P @ $0.85 (228 pts out)
-💵 CREDIT: $85 per contract"
+Claude: Runs `node spx-deeppremium.js 1` and reports:
+"SPX is at $6003. Scanning for 1DTE opportunities (300+ points out, $2.00+ bid):
+✅ FOUND: 1 qualifying opportunity
+💰 BEST: 5700P @ $2.15 (303 pts out)
+💵 CREDIT: $215 per contract"
 
 
 ## Key Scripts in Project

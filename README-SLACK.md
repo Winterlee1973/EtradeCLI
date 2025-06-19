@@ -6,7 +6,7 @@ Slack integration for real-time trading commands and Claude AI conversations.
 
 ### 🤖 Trading Commands
 - **Quotes**: `q TSLA` or `quote AAPL`
-- **Deep Premium**: `sdp today` or `sdp tomorrow`
+- **Deep Premium**: `spx 0` or `spx 1`
 
 ### 🧠 Claude AI Integration
 - Natural conversation about market conditions
@@ -15,8 +15,8 @@ Slack integration for real-time trading commands and Claude AI conversations.
 - Maintains conversation context per user
 
 ### ⏰ Automated Alerts
-- **9:40 AM EST**: Daily SDP Today scan (0DTE opportunities)
-- **3:50 PM EST**: Daily SDP Tomorrow scan (1DTE setup)
+- **9:40 AM EST**: Daily SPX 0DTE scan (same day opportunities)
+- **3:50 PM EST**: Daily SPX 1DTE scan (next day setup)
 
 ## Setup
 
@@ -68,8 +68,8 @@ npm run dev
 ### In Slack:
 ```
 q SPX                    # Get SPX quote
-sdp today                # Scan for 0DTE deep premium
-sdp tomorrow             # Scan for 1DTE deep premium
+spx 0                    # Scan for 0DTE deep premium
+spx 1                    # Scan for 1DTE deep premium
 
 # Claude conversations:
 What's causing the market drop today?
@@ -82,14 +82,14 @@ Analyze the VIX spike
 | Command | Description | Example |
 |---------|-------------|---------|
 | `q SYMBOL` | Get quote | `q TSLA` |
-| `sdp today` | Deep premium 0DTE | `sdp today` |
-| `sdp tomorrow` | Deep premium 1DTE | `sdp tomorrow` |
+| `spx 0` | Deep premium 0DTE | `spx 0` |
+| `spx 1` | Deep premium 1DTE | `spx 1` |
 | `@bot question` | Ask Claude | `@bot What's the market outlook?` |
 
 ## Alerts Schedule
 
-- **9:40 AM EST**: SDP Today scan (0DTE opportunities)
-- **3:50 PM EST**: SDP Tomorrow scan (1DTE setup)
+- **9:40 AM EST**: SPX 0DTE scan (same day opportunities)
+- **3:50 PM EST**: SPX 1DTE scan (next day setup)
 
 ## Configuration
 
@@ -137,7 +137,7 @@ The bot will post alerts to the channel specified in `SLACK_ALERT_CHANNEL`. Make
 ```bash
 # Test trading commands
 node run.js q SPX
-node spx-deeppremium.js today
+node spx-deeppremium.js 0
 
 # Test in development mode (enables extra logging)
 NODE_ENV=development npm start

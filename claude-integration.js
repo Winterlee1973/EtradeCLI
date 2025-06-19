@@ -58,10 +58,10 @@ export class ClaudeIntegration {
     return quotePatterns.some(pattern => pattern.test(command));
   }
   
-  // Detect SPX requests like "spx 1", "sdp", "deep puts", "find opportunities"
+  // Detect SPX requests like "spx 1", "deep puts", "find opportunities"
   isSPXRequest(command) {
     const spxPatterns = [
-      /^(?:spx|sdp)\s*\d*\s*[\d.]*$/i,
+      /^spx\s*\d*\s*[\d.]*$/i,
       /deep.*?puts?/i,
       /find.*?(?:opportunities|puts)/i,
       /scan.*?spx/i,
@@ -249,7 +249,7 @@ export class ClaudeIntegration {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: '*🎯 SPX Deep Premium:*\n• `spx 1` or `sdp` - 1DTE scan (next trading day)\n• `spx 0` or `sdp 0` - 0DTE scan (same day expiration)\n• `spx 1 1.50` - Custom premium target\n• "find deep puts" - Natural language scan'
+            text: '*🎯 SPX Deep Premium:*\n• `spx 1` - 1DTE scan (next trading day)\n• `spx 0` - 0DTE scan (same day expiration)\n• `spx 1 1.50` - Custom premium target\n• "find deep puts" - Natural language scan'
           }
         },
         {

@@ -10,7 +10,7 @@ A conversational and automated trading analysis tool designed for Claude Code te
 - **Direct Commands**: `spx 1 1`, `node run.js q AAPL`
 
 ### 2. Slack Integration
-- **Direct Commands**: `spx 1`, `sdp 0`, `q TSLA`
+- **Direct Commands**: `spx 1`, `spx 0`, `q TSLA`
 - **Scheduled Scans**: Automated cron jobs for market alerts
 - **Rich Formatting**: Interactive buttons and structured displays
 
@@ -82,7 +82,7 @@ node spx-deeppremium.js 0     # 0DTE (same day)
 node spx-deeppremium.js 1     # 1DTE (next trading day) 
 node spx-deeppremium.js 1 1.5 # Custom premium target
 ```
-**Claude**: "spx 1 1", "find deep puts", "sdp 0"
+**Claude**: "spx 1 1", "find deep puts", "spx 0"
 
 ## Current Strategies
 

@@ -30,9 +30,9 @@ console.log('Signing Secret length:', process.env.SLACK_SIGNING_SECRET?.length);
 // Trading command patterns
 const TRADING_COMMANDS = {
   quote: /^(q|quote)\s+([A-Z]{1,5})$/i,
-  deep_premium: /^(sdp|deep|spx)\s+([01])$/i,
-  deep_premium_target: /^(sdp|spx)\s+([01])\s+(\d*\.?\d+)$/i,
-  deep_premium_custom: /^(sdp|spx)\s+(\d+)\s+points?\s+(\d+\.?\d*)\s+premium$/i,
+  deep_premium: /^(deep|spx)\s+([01])$/i,
+  deep_premium_target: /^spx\s+([01])\s+(\d*\.?\d+)$/i,
+  deep_premium_custom: /^spx\s+(\d+)\s+points?\s+(\d+\.?\d*)\s+premium$/i,
   orders: /^orders?$/i,
   orders_open: /^orders?\s+open$/i,
   orders_closed: /^orders?\s+closed$/i

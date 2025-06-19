@@ -164,7 +164,6 @@ export function parseStrategyCommand(args) {
   // Map common aliases
   const strategyAliases = {
     'spx': 'spx-deep-premium',
-    'sdp': 'spx-deep-premium',
     'q': 'quote',
     'quote': 'quote'
   };

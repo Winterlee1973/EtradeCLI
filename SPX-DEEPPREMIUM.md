@@ -4,22 +4,22 @@ A specialized script for finding high-premium SPX put options that are deep out 
 
 ## Overview
 
-The SPX Deep Premium Scanner (SDP) finds tomorrow's SPX puts with significant premium values, focusing on strikes that are deep OTM (out of the money). This is useful for identifying high-reward opportunities while maintaining distance from current price levels.
+The SPX Deep Premium Scanner finds tomorrow's SPX puts with significant premium values, focusing on strikes that are deep OTM (out of the money). This is useful for identifying high-reward opportunities while maintaining distance from current price levels.
 
 ## Usage
 
 ### With Claude Code
 Just say:
-- "sdp"
+- "spx 1"
 - "run deep premium" 
 - "find deep puts"
 - "deep puts 250 out"
 
 ### Direct Command Line
 ```bash
-node spxdeeppremium.js
-node spxdeeppremium.js --min-distance 250
-node spxdeeppremium.js --min-premium 1.50
+node spx-deeppremium.js 1
+node spx-deeppremium.js 1 --min-distance 250
+node spx-deeppremium.js 1 --min-premium 1.50
 ```
 
 ## Parameters
@@ -34,13 +34,13 @@ node spxdeeppremium.js --min-premium 1.50
 
 ```bash
 # Find puts with $3+ premium, 400+ points out
-node spxdeeppremium.js --min-premium 3.00 --min-distance 400
+node spx-deeppremium.js 1 --min-premium 3.00 --min-distance 400
 
 # Find puts 200+ points out with $1+ premium
-node spxdeeppremium.js --min-premium 1.00 --min-distance 200
+node spx-deeppremium.js 1 --min-premium 1.00 --min-distance 200
 
 # Show top 10 deep premium opportunities
-node spxdeeppremium.js --max-results 10
+node spx-deeppremium.js 1 --max-results 10
 ```
 
 ## Output Format
@@ -69,13 +69,13 @@ Deep premium scanning is used for:
 
 ## Integration with Other Scripts
 
-- Use `sps` (spx-put-seller.js) for current-day opportunities
-- Use `sdp` (spxdeeppremium.js) for next-day high-premium hunting
+- Use `spx 0` for current-day opportunities (0DTE)
+- Use `spx 1` for next-day high-premium hunting (1DTE)
 - Both scripts show 11-strike context windows for decision making
 
 ## Expected Results
 
-Typical SDP results show:
+Typical SPX results show:
 - 5-15 qualifying put options
 - Premiums ranging from $2.00 to $10.00+
 - Strikes 300-800 points below current SPX

@@ -27,7 +27,7 @@ export async function startScheduler(slackApp) {
     }
   }
   
-  // Tuesday/Wednesday/Thursday 9:40 AM: SDP 0DTE
+  // Tuesday/Wednesday/Thursday 9:40 AM: SPX 0DTE
   cron.schedule('40 9 * * 2,3,4', async () => {
     console.log('🌅 Running 0DTE alert (Tue/Wed/Thu 9:40 AM)...');
     try {
@@ -39,7 +39,7 @@ export async function startScheduler(slackApp) {
       await slackApp.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
         channel: USER_ID,  // DM to user
-        text: '🌅 *SDP 0DTE Alert*',
+        text: '🌅 *SPX 0DTE Alert*',
         ...formattedMessage
       });
       
@@ -57,7 +57,7 @@ export async function startScheduler(slackApp) {
     timezone: 'America/New_York'
   });
   
-  // Friday 3:50 PM: SDP 1DTE
+  // Friday 3:50 PM: SPX 1DTE
   cron.schedule('50 15 * * 5', async () => {
     console.log('🌆 Running 1DTE alert (Friday 3:50 PM)...');
     try {
@@ -69,7 +69,7 @@ export async function startScheduler(slackApp) {
       await slackApp.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
         channel: USER_ID,
-        text: '🌆 *SDP 1DTE Alert*',
+        text: '🌆 *SPX 1DTE Alert*',
         ...formattedMessage
       });
       
