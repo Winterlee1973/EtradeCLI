@@ -29,17 +29,25 @@ Be conversational, insightful, and focus on actionable trading advice. Keep resp
 The user can run commands directly by typing:
 - "q SYMBOL" for quotes
 - "sps" for put selling opportunities  
-- "sdp today" or "sdp tomorrow" for deep premium scans
+- "sdp 0" for 0DTE deep premium scans (today)
+- "sdp 1" for 1DTE deep premium scans (next trading day)
 
 You should engage in natural conversation about market conditions, strategy, and analysis.`;
 
+const INTRO_MESSAGE = '📊 TRADING BOT READY\n🎯 Commands: q TSLA | q MSFT | sdp 0 | sdp 1';
+
 export async function claudeChat(message, userId) {
   try {
+    // Check if user says "hi" - always return intro
+    if (message.toLowerCase().trim() === 'hi') {
+      return INTRO_MESSAGE;
+    }
+    
     // Get or create conversation history for user
     if (!conversations.has(userId)) {
       conversations.set(userId, []);
-      // Return hardcoded intro for new users
-      return '📊 TRADING BOT READY\nCommands: q TSLA | q MSFT | sdp today | sdp tomorrow';
+      // Return intro for new users
+      return INTRO_MESSAGE;
     }
     
     const history = conversations.get(userId);

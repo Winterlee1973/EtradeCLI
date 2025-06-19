@@ -9,14 +9,42 @@ import yahooFinance from './yahoo-finance-quiet.js';
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Market holidays for 2025 (US stock market)
+function isMarketHoliday(date) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1; // JS months are 0-indexed
+  const day = date.getDate();
+  
+  // 2025 market holidays
+  const holidays2025 = [
+    '1/1',   // New Year's Day
+    '1/20',  // MLK Day
+    '2/17',  // Presidents Day
+    '4/18',  // Good Friday
+    '5/26',  // Memorial Day
+    '6/19',  // Juneteenth
+    '7/4',   // Independence Day
+    '9/1',   // Labor Day
+    '11/27', // Thanksgiving
+    '12/25'  // Christmas
+  ];
+  
+  if (year === 2025) {
+    const dateStr = `${month}/${day}`;
+    return holidays2025.includes(dateStr);
+  }
+  
+  return false; // No holiday data for other years
+}
+
 
 // ----------------- CLI -----------------
 const argv = yargs(hideBin(process.argv))
-  .command('today', 'Scan today\'s expiration (0DTE)', {}, (argv) => {
+  .command('0', 'Scan 0DTE (same day expiration)', {}, (argv) => {
     argv.expiration = 0;
     argv.minDistance = 200;
     argv.minPremium = 0.80;
-    argv.strategy = 'today';
+    argv.strategy = '0dte';
   })
   .command('1', 'Scan next trading day (1DTE)', {}, (argv) => {
     argv.expiration = 1;
@@ -27,8 +55,8 @@ const argv = yargs(hideBin(process.argv))
   .option('min-distance', { type: 'number', describe: 'Minimum distance from SPX (points)' })
   .option('min-premium', { type: 'number', describe: 'Minimum bid premium' })
   .option('expiration', { type: 'number', describe: 'Expiration index (0 = today, 1 = tomorrow)' })
-  .example('$0 today', 'Scan today (200 points, $0.80 bid)')
-  .example('$0 1', 'Scan next trading day (300 points, $2.00 bid)')
+  .example('$0 0', 'Scan 0DTE (200 points, $0.80 bid)')
+  .example('$0 1', 'Scan 1DTE (300 points, $2.00 bid)')
   .example('$0 --min-distance 300 --min-premium 1.50', 'Custom parameters')
   .argv;
 
@@ -52,14 +80,8 @@ async function main() {
   const isWeekend = easternTime.getDay() === 0 || easternTime.getDay() === 6;
   const isMarketHours = currentTime >= 930 && currentTime <= 1600;
   
-  if (isWeekend || !isMarketHours) {
-    console.log('🎯 SPX DEEP PREMIUM SCAN');
-    console.log('─────────────────────────');
-    console.log('❌ Sorry Market isn\'t opened');
-    console.log('📅 Market Hours: 9:30 AM - 4:00 PM EST');
-    console.log('');
-    return;
-  }
+  // Show market status but continue with scan
+  const marketStatus = (isWeekend || !isMarketHours) ? 'CLOSED' : 'OPEN';
   
   // Fetch data silently
   let quote, optionInfo;
@@ -82,8 +104,37 @@ async function main() {
   });
   
   const spot = quote.regularMarketPrice;
-  const expiration = optionInfo.expirationDates[argv.expiration];
-  const expDate = new Date(expiration);
+  
+  // Find the right expiration date, skipping weekends
+  let expiration, expDate;
+  if (argv.expiration === 0) {
+    // 0DTE - use today's expiration
+    expiration = optionInfo.expirationDates[0];
+    expDate = new Date(expiration);
+  } else {
+    // 1DTE - find next trading day based on market status
+    let targetDate = new Date();
+    
+    // Since SPX options don't expire every day, find the next available expiration
+    // that falls on a trading day
+    for (let i = 1; i < optionInfo.expirationDates.length; i++) {
+      const testDate = new Date(optionInfo.expirationDates[i]);
+      const dayOfWeek = testDate.getDay();
+      
+      // Skip weekends and holidays
+      if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isMarketHoliday(testDate)) {
+        expiration = optionInfo.expirationDates[i];
+        expDate = testDate;
+        break;
+      }
+    }
+    // Fallback if no weekday found
+    if (!expiration) {
+      expiration = optionInfo.expirationDates[argv.expiration];
+      expDate = new Date(expiration);
+    }
+  }
+  
   const expDateStr = expDate.toLocaleDateString('en-US', { 
     weekday: 'long', 
     month: 'long', 
@@ -101,7 +152,7 @@ async function main() {
   console.log('🎯 SPX DEEP PREMIUM SCAN');
   console.log('─────────────────────────');
   console.log(`⏰ Time: ${timestamp}`);
-  console.log(`📈 SPX: ${spot.toFixed(2)}`);
+  console.log(`📈 SPX: ${spot.toFixed(2)} (${marketStatus})`);
   console.log(`📅 Exp: ${expDateStr} ${argv.strategy === '1dte' ? dayNote : ''}`);
   console.log(`🎲 Criteria: ${argv.minDistance}pts/${argv.minPremium.toFixed(2)}bid`);
   console.log('');

@@ -12,13 +12,13 @@ When the user asks for market data or trading strategies, use these shortcuts:
 
 
 ### SPX Deep Premium Scanner (SDP)
-- "sdp today" → Run: `node spx-deeppremium.js today` (200+ points, $0.80+ bid)
-- "sdp tomorrow" → Run: `node spx-deeppremium.js tomorrow` (350+ points, $2.00+ bid)
-- "sdp" or "find deep puts" → Run: `node spx-deeppremium.js` (default tomorrow settings)
+- "sdp 0" → Run: `node spx-deeppremium.js 0` (200+ points, $0.80+ bid)
+- "sdp 1" → Run: `node spx-deeppremium.js 1` (300+ points, $2.00+ bid)
+- "sdp" or "find deep puts" → Run: `node spx-deeppremium.js` (default 1DTE settings)
 - Custom: `node spx-deeppremium.js --min-distance 250 --min-premium 1.50`
 - **Execution-Ready Strategies:**
-  - TODAY: 200+ points out with $0.80+ bid (0DTE qualifying criteria)
-  - TOMORROW: 350+ points out with $2.00+ bid (1DTE qualifying criteria)
+  - 0DTE: 200+ points out with $0.80+ bid (today's expiration)
+  - 1DTE: 300+ points out with $2.00+ bid (next trading day)
 - Shows option chain grid and marks opportunities as "EXECUTION READY"
 
 ### Common Trading Terms
@@ -35,7 +35,7 @@ Claude: Runs `node run.js q TSLA` and reports: "Tesla (TSLA) is trading at $323.
 
 ### Example 2: SPX Put Selling
 User: "show me deep puts"
-Claude: Runs `node run.js sdp today` and reports:
+Claude: Runs `node spx-deeppremium.js 0` and reports:
 "SPX is at $6003. Scanning for 0DTE opportunities (200+ points out, $0.80+ bid):
 ✅ FOUND: 2 qualifying opportunities
 💰 BEST: 5775P @ $0.85 (228 pts out)
