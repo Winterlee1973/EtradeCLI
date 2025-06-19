@@ -12,6 +12,7 @@ dotenv.config();
 
 const execAsync = promisify(exec);
 
+
 // Initialize Slack app
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -62,6 +63,9 @@ async function executeCommand(command) {
 
 // Parse trading commands
 function parseMessage(text) {
+  if (!text || typeof text !== 'string') {
+    return { type: 'claude', message: '' };
+  }
   const cleanText = text.trim();
   
   // Extract potential trading commands from anywhere in the message
@@ -144,13 +148,24 @@ app.message(async ({ message, say }) => {
       let formattedResult;
       if (parsed.command.includes(' q ') || parsed.command.includes('quote')) {
         formattedResult = formatQuoteForSlack(result);
+        await say({
+          text: formattedResult
+        });
       } else {
         formattedResult = formatForSlack(result);
+        
+        // Check if we got rich blocks or plain text
+        if (formattedResult && formattedResult.blocks) {
+          await say({
+            text: 'SPX Deep Premium Scan Results',
+            blocks: formattedResult.blocks
+          });
+        } else {
+          await say({
+            text: formattedResult
+          });
+        }
       }
-      
-      await say({
-        text: formattedResult
-      });
       console.log('📤 Sent trading response to Slack');
     } else {
       console.log('🤖 Sending to Claude:', parsed.message);
@@ -167,6 +182,37 @@ app.message(async ({ message, say }) => {
   } catch (error) {
     console.error('❌ Error handling message:', error);
     await say(`Error: ${error.message}`);
+  }
+});
+
+// Handle button clicks
+app.action('execute_trade', async ({ ack, say }) => {
+  await ack();
+  
+  await say({
+    text: `⚡ *Trade Execution*\nThis would connect to your brokerage API to execute the trade.`
+  });
+});
+
+app.action('refresh_scan', async ({ ack, say }) => {
+  await ack();
+  
+  try {
+    const result = await executeCommand('node spx-deeppremium.js 1');
+    const formattedResult = formatForSlack(result);
+    
+    if (formattedResult && formattedResult.blocks) {
+      await say({
+        text: 'Refreshed SPX Scan Results',
+        blocks: formattedResult.blocks
+      });
+    } else {
+      await say({
+        text: formattedResult
+      });
+    }
+  } catch (error) {
+    await say(`Error refreshing scan: ${error.message}`);
   }
 });
 
@@ -194,14 +240,27 @@ app.event('app_mention', async ({ event, say }) => {
       let formattedResult;
       if (parsed.command.includes(' q ') || parsed.command.includes('quote')) {
         formattedResult = formatQuoteForSlack(result);
+        await say({
+          text: formattedResult,
+          channel: event.channel
+        });
       } else {
         formattedResult = formatForSlack(result);
+        
+        // Check if we got rich blocks or plain text
+        if (formattedResult && formattedResult.blocks) {
+          await say({
+            text: 'SPX Deep Premium Scan Results',
+            blocks: formattedResult.blocks,
+            channel: event.channel
+          });
+        } else {
+          await say({
+            text: formattedResult,
+            channel: event.channel
+          });
+        }
       }
-      
-      await say({
-        text: formattedResult,
-        channel: event.channel
-      });
       console.log('📤 Sent trading response to Slack (mention)');
     } else {
       console.log('🤖 Sending mention to Claude:', parsed.message);

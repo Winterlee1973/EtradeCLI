@@ -348,6 +348,26 @@ async function main() {
     console.log(`📊 Credit: $${(bestQualified.bid * 100).toFixed(0)}`);
     console.log(`📏 Distance: ${bestQualified.distance_from_spx.toFixed(0)} points`);
     
+    // Add Safety Meter based on distance
+    const distance = bestQualified.distance_from_spx;
+    let safetyLevel, safetyEmoji;
+    
+    if (distance >= 300) {
+      safetyLevel = 'Extremely Safe';
+      safetyEmoji = '🟢🟢🟢';
+    } else if (distance >= 200) {
+      safetyLevel = 'Very Safe';
+      safetyEmoji = '🟢🟢';
+    } else if (distance >= 100) {
+      safetyLevel = 'Somewhat Safe';
+      safetyEmoji = '🟡';
+    } else {
+      safetyLevel = 'Risky';
+      safetyEmoji = '🔴';
+    }
+    
+    console.log(`🛡️  Safety Meter: ${safetyEmoji} ${safetyLevel}`);
+    
     // Only show YES/NO for regular scanning, not target bid mode
     if (!argv.targetBid) {
       console.log('✅ YES');
