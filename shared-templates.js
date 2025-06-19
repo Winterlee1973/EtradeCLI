@@ -390,14 +390,218 @@ export const SharedTemplates = {
         }
       }]
     })
+  },
+
+  // Help template for bot documentation and guidance
+  help1: {
+    terminal: {
+      header: () => '📖 LEE\'S AI TRADING BOT - v2',
+      section: (title) => `\n## ${title}`,
+      command: (cmd, description) => `• ${cmd} - ${description}`,
+      example: (example, description) => `  ${example}  # ${description}`,
+      note: (message) => `\n⚠️  ${message}`,
+      quickStart: () => '\n⚡ Quick Start Examples:'
+    },
+    
+    slack: {
+      helpBlock: (content) => ({
+        type: 'section',
+        text: {
+          type: 'mrkdwn', 
+          text: content
+        }
+      }),
+      
+      categoryBlock: (title, commands) => ({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*${title}*\n${commands.map(cmd => `• ${cmd}`).join('\n')}`
+        }
+      })
+    }
+  },
+
+  // === FUTURE SCRIPT TEMPLATES ===
+  // These templates will be used by advanced Scripts (not current Commands)
+  
+  // Recommendation template for intelligent suggestions
+  recommendation1: {
+    terminal: {
+      header: () => '🎯 INTELLIGENT RECOMMENDATIONS:',
+      strategy: (name, confidence, reasoning) => `✅ ${name} (${confidence}% confidence)\n   Reasoning: ${reasoning}`,
+      warning: (message) => `⚠️  Warning: ${message}`,
+      insight: (message) => `💡 Market Insight: ${message}`,
+      nextAction: (action) => `➡️  Next: ${action}`
+    },
+    
+    slack: {
+      recommendationBlock: (strategies) => ({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*🎯 INTELLIGENT RECOMMENDATIONS*\n${strategies.map(s => 
+            `• *${s.name}* (${s.confidence}% confidence)\n  ${s.reasoning}`
+          ).join('\n')}`
+        }
+      })
+    }
+  },
+
+  // Comparison template for multi-strategy analysis
+  comparison1: {
+    terminal: {
+      header: () => '⚖️  STRATEGY COMPARISON:',
+      comparison: (strategies) => {
+        let output = 'Strategy'.padEnd(20) + 'Risk'.padEnd(10) + 'Reward'.padEnd(10) + 'Score\n';
+        output += '─'.repeat(50) + '\n';
+        strategies.forEach(s => {
+          output += `${s.name.padEnd(20)}${s.risk.padEnd(10)}${s.reward.padEnd(10)}${s.score}\n`;
+        });
+        return output;
+      },
+      winner: (strategy, reason) => `🏆 Best Strategy: ${strategy}\n   Reason: ${reason}`
+    },
+    
+    slack: {
+      comparisonBlock: (strategies) => ({
+        type: 'section',
+        fields: strategies.map(s => ({
+          type: 'mrkdwn',
+          text: `*${s.name}*\nRisk: ${s.risk} | Reward: ${s.reward}\nScore: ${s.score}`
+        }))
+      })
+    }
+  },
+
+  // Reasoning template for AI explanations
+  reasoning1: {
+    terminal: {
+      header: () => '🧠 MARKET ANALYSIS & REASONING:',
+      factor: (name, impact, description) => `• ${name}: ${impact} impact\n  ${description}`,
+      conclusion: (text) => `\n📊 Conclusion: ${text}`,
+      confidence: (level, factors) => `\n🎯 Confidence: ${level}% (based on ${factors.join(', ')})`
+    },
+    
+    slack: {
+      reasoningBlock: (factors, conclusion) => ({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*🧠 MARKET ANALYSIS*\n${factors.map(f => 
+            `• *${f.name}*: ${f.impact} impact\n  ${f.description}`
+          ).join('\n')}\n\n*📊 Conclusion:* ${conclusion}`
+        }
+      })
+    }
   }
 };
 
-// Template presets for common strategy types
+// Template presets for trading strategies
+// 
+// ARCHITECTURE OVERVIEW:
+// 
+// === COMMANDS vs SCRIPTS ===
+// 
+// COMMANDS (Current Implementation):
+//   - Direct execution with specific parameters
+//   - Single query focus (e.g., SPX deep premium scan)
+//   - Auto/Manual execution modes
+//   - Fast, targeted results
+//   - Examples: spx td1 minbid2 distance300, quote TSLA
+// 
+// SCRIPTS (Future Implementation):
+//   - Multi-query logic and analysis
+//   - Complex recommendation engines
+//   - Market condition awareness
+//   - Cross-strategy comparisons
+//   - Advanced decision trees
+//   - Examples: market-condition-scanner, multi-timeframe-analysis
+// 
+// Both Commands and Scripts will use these shared templates for consistent output
+// 
 export const TemplatePresets = {
-  // SPX Deep Premium Strategy (uses quote1 + optionschain1 + order1)
+  // SPX Deep Premium COMMAND (uses quote1 + optionschain1 + order1)
+  // Command formats (ADVANCED REQUIRED FORMAT):
+  // 
+  // === CONSERVATIVE STRATEGIES ===
+  //   spx td1 minbid2.5 distance350   - High premium, far OTM (safer)
+  //   spx td1 minbid3.0 distance400   - Premium hunting, ultra-safe distance
+  //   spx td0 minbid1.0 distance250   - 0DTE conservative with decent premium
+  // 
+  // === AGGRESSIVE STRATEGIES ===
+  //   spx td1 minbid1.0 distance200   - Closer strikes, lower premium threshold
+  //   spx td1 minbid0.5 distance150   - High risk/reward, close to money
+  //   spx td0 minbid0.3 distance100   - 0DTE scalping (extreme risk)
+  // 
+  // === BALANCED STRATEGIES ===
+  //   spx td1 minbid2.0 distance300   - Standard 1DTE strategy (recommended)
+  //   spx td1 minbid1.5 distance250   - Moderate risk, decent premium
+  //   spx td0 minbid0.8 distance200   - Standard 0DTE strategy
+  // 
+  // === MARKET CONDITION STRATEGIES ===
+  //   spx td1 minbid4.0 distance500   - High volatility, max distance
+  //   spx td1 minbid1.2 distance280   - Low volatility, tighter criteria
+  //   spx td0 minbid0.6 distance180   - Quiet market 0DTE
+  // 
+  // === PREMIUM HUNTING ===
+  //   spx td1 minbid5.0 distance600   - Chase maximum premium (rare setups)
+  //   spx td1 minbid3.5 distance450   - High premium threshold
+  //   spx td0 minbid1.5 distance300   - 0DTE premium focus
+  // 
+  // === STRATEGY SELECTION GUIDE ===
+  // 
+  // Market Volatility:
+  //   High VIX (>25): Use distance400+ with minbid3.0+ for safety
+  //   Normal VIX (15-25): Standard distance300 with minbid2.0
+  //   Low VIX (<15): Can use distance200-250 with minbid1.5+
+  // 
+  // Time of Day:
+  //   Morning (9:30-11): Use conservative distance300+ (higher volatility)
+  //   Midday (11-2): Can use moderate distance250-300
+  //   Close (2-4): 0DTE focus, distance200+ recommended
+  // 
+  // Market Direction:
+  //   Trending Down: Increase distance by 50-100pts (more put buying)
+  //   Sideways/Up: Standard distances work well
+  //   Strong Rally: Consider distance400+ (extreme put protection)
+  // 
+  // Risk Tolerance:
+  //   Conservative: minbid2.5+ distance350+ (focus on safety)
+  //   Moderate: minbid1.5-2.5 distance250-350 (balanced approach)
+  //   Aggressive: minbid0.5-1.5 distance150-250 (higher risk/reward)
+  // 
+  // === QUICK REFERENCE FOR COMMON SCENARIOS ===
+  // 
+  // "I want safe premium collection":
+  //   → spx td1 minbid2.5 distance350
+  // 
+  // "Market is crazy volatile today":
+  //   → spx td1 minbid4.0 distance500
+  // 
+  // "I'm feeling aggressive":
+  //   → spx td1 minbid1.0 distance200
+  // 
+  // "Standard 1DTE strategy":
+  //   → spx td1 minbid2.0 distance300
+  // 
+  // "0DTE scalping opportunity":
+  //   → spx td0 minbid0.8 distance200
+  // 
+  // "Chase maximum premium":
+  //   → spx td1 minbid5.0 distance600
+  // 
+  // "Market seems quiet":
+  //   → spx td1 minbid1.2 distance280
+  // 
+  // All parameters are REQUIRED for meaningful trading strategies.
+  // Old simple formats (spx 1, spx 0) are deprecated and will show error.
+  // 
+  // Refresh behavior: Slack bot saves last SPX command globally (lastSpxCommand)
+  // and reuses it for "Refresh Scan" button to preserve all parameters
   spxDeepPremium: {
     templates: ['quote1', 'optionschain1', 'order1'],
+    headerFormat: 'SPX DEEP PREMIUM SCAN: {runType} - SPX TD{expiration} MINBID${minPremium} DISTANCE{minDistance}PTS',
     terminal: [
       'header',
       'marketData',
@@ -429,5 +633,69 @@ export const TemplatePresets = {
     terminal: ['quote1.terminal'],
     slack: ['quote1.slack']
   },
+  
+  // Help documentation display (uses help1)
+  helpDisplay: {
+    templates: ['help1'],
+    triggers: ['hi', 'hello', 'help', 'start'],
+    autoDisplay: ['server-startup'],
+    terminal: ['help1.terminal'],
+    slack: ['help1.slack'],
+    source: 'bot-help-v2.md'
+  },
+  
+  // === FUTURE SCRIPT TEMPLATES ===
+  // These will be implemented when Scripts are added
+  
+  // Market Condition Scanner SCRIPT (future)
+  marketConditionScanner: {
+    templates: ['quote1', 'optionschain1', 'order1', 'recommendation1'],
+    capabilities: [
+      'Multi-timeframe analysis',
+      'VIX correlation analysis', 
+      'Market trend detection',
+      'Cross-strategy recommendations',
+      'Risk assessment scoring'
+    ],
+    sampleCommands: [
+      'market-scan aggressive',
+      'market-scan conservative', 
+      'market-scan auto-recommend'
+    ]
+  },
+  
+  // Multi-Strategy Analyzer SCRIPT (future)
+  multiStrategyAnalyzer: {
+    templates: ['quote1', 'optionschain1', 'order1', 'comparison1'],
+    capabilities: [
+      'Compare multiple SPX strategies',
+      'Risk/reward optimization',
+      'Portfolio impact analysis',
+      'Diversification recommendations',
+      'Time-based strategy selection'
+    ],
+    sampleCommands: [
+      'analyze-strategies conservative balanced aggressive',
+      'optimize-portfolio risk-level medium',
+      'recommend-best-strategy current-market'
+    ]
+  },
+  
+  // Intelligent Recommendation Engine SCRIPT (future)
+  intelligentRecommendations: {
+    templates: ['quote1', 'optionschain1', 'order1', 'recommendation1', 'reasoning1'],
+    capabilities: [
+      'AI-powered strategy selection',
+      'Market condition interpretation',
+      'Risk tolerance matching', 
+      'Historical pattern analysis',
+      'Real-time strategy adjustment'
+    ],
+    sampleCommands: [
+      'recommend-strategy user-profile conservative',
+      'auto-adjust current-positions',
+      'market-intelligence-report'
+    ]
+  }
   
 };

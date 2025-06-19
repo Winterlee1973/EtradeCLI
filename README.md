@@ -16,16 +16,40 @@ A conversational and automated trading analysis tool designed for Claude Code te
 
 ## Architecture Overview
 
-### Modular Strategy System
+### Commands vs Scripts System
 ```
-strategy-framework.js     → Base classes and registry
-shared-templates.js       → Reusable formatting templates  
-claude-integration.js     → AI assistant conversational interface
-strategies/               → Individual strategy implementations
-  ├── spx-deep-premium-strategy.js
-  ├── quote-strategy.js
-  └── [future strategies]
+=== COMMANDS (Current Implementation) ===
+Direct execution with specific parameters
+├── spx-deeppremium.js              → SPX deep premium scanner
+├── quote.js                        → Stock/index quotes
+├── order-status.js                 → Order tracking
+└── [other command files]
+
+=== SCRIPTS (Future Implementation) ===
+Advanced multi-query logic with recommendations  
+├── scripts/
+│   ├── market-condition-scanner.js → Multi-timeframe analysis
+│   ├── multi-strategy-analyzer.js  → Cross-strategy comparisons  
+│   ├── intelligent-recommender.js  → AI-powered suggestions
+│   └── [future advanced scripts]
+
+=== SHARED INFRASTRUCTURE ===
+├── strategy-framework.js           → Base classes and registry
+├── shared-templates.js             → Reusable formatting templates
+├── claude-integration.js           → AI assistant interface
+└── slack-bot.js                    → Command/script routing
 ```
+
+### Commands vs Scripts
+**Commands**: Fast, targeted, single-query execution
+- `spx td1 minbid2 distance300` - Direct SPX scan
+- `quote TSLA` - Get stock quote
+- Auto/Manual execution modes
+
+**Scripts**: Complex, multi-query analysis with intelligence
+- `market-scan auto-recommend` - Analyze conditions and suggest strategies
+- `optimize-portfolio risk-medium` - Cross-strategy optimization
+- `analyze-strategies conservative balanced aggressive` - Compare multiple approaches
 
 ### Template System
 
@@ -34,6 +58,12 @@ strategies/               → Individual strategy implementations
 #### `quote1` - Simple Price Display
 - **Terminal**: Symbol, price, change, timestamp
 - **Slack**: Rich blocks with fields
+
+#### `help1` - Bot Documentation and Guidance
+- **Terminal**: Formatted help sections with commands and examples
+- **Slack**: Rich markdown blocks with categorized command lists
+- **Triggers**: hi, hello, help, start
+- **Auto-display**: Server startup notifications
 
 #### `optionschain1` - Standard Grid (Strike/Bid/Ask/Distance)
 - **Terminal**: Monospace table with markers (🎯✅💰)
@@ -57,6 +87,12 @@ spxDeepPremium: {
   // Uses standardized Strike/Bid/Ask grid + execution summary
 }
 
+helpDisplay: {
+  templates: ['help1'],
+  triggers: ['hi', 'hello', 'help', 'start'],
+  autoDisplay: ['server-startup']
+}
+
 orderStatus: {
   templates: ['orderstatus1'],
   // Shows all order statuses (filled, pending, cancelled)
@@ -76,21 +112,49 @@ node run.js q TSLA        # Direct quote
 ```
 **Claude**: "q TSLA", "what's SPX at?", "quote AAPL"
 
-### SPX Deep Premium Scanner
+### SPX Deep Premium Scanner (ADVANCED STRATEGIES)
 ```bash
-node spx-deeppremium.js 0     # 0DTE (same day)
-node spx-deeppremium.js 1     # 1DTE (next trading day) 
-node spx-deeppremium.js 1 1.5 # Custom premium target
+# CONSERVATIVE STRATEGIES
+node spx-deeppremium.js td1 minbid2.5 distance350  # Safe premium collection
+node spx-deeppremium.js td1 minbid3.0 distance400  # Ultra-safe, premium hunting
+node spx-deeppremium.js td0 minbid1.0 distance250  # Conservative 0DTE
+
+# BALANCED STRATEGIES  
+node spx-deeppremium.js td1 minbid2.0 distance300  # Standard 1DTE (recommended)
+node spx-deeppremium.js td1 minbid1.5 distance250  # Moderate risk/reward
+node spx-deeppremium.js td0 minbid0.8 distance200  # Standard 0DTE
+
+# AGGRESSIVE STRATEGIES
+node spx-deeppremium.js td1 minbid1.0 distance200  # Higher risk/reward
+node spx-deeppremium.js td1 minbid0.5 distance150  # Close to money
+node spx-deeppremium.js td0 minbid0.3 distance100  # 0DTE scalping (extreme)
+
+# MARKET CONDITION STRATEGIES
+node spx-deeppremium.js td1 minbid4.0 distance500  # High volatility days
+node spx-deeppremium.js td1 minbid5.0 distance600  # Maximum premium hunting
+node spx-deeppremium.js td1 minbid1.2 distance280  # Quiet market conditions
 ```
-**Claude**: "spx 1 1", "find deep puts", "spx 0"
+
+**Required Format**: `spx td[0|1] minbid[amount] distance[points]`
+- **td1** = 1 day to expiration, **td0** = same day (0DTE)
+- **minbid2.0** = Minimum $2.00 bid requirement (premium threshold)  
+- **distance300** = 300 points below current SPX price (safety buffer)
+
+**Claude**: Use specific strategies like "spx td1 minbid2 distance300", "conservative spx scan", "aggressive 0dte"
 
 ## Current Strategies
 
 ### 1. SPX Deep Premium (`spx-deep-premium`)
-- **Purpose**: Find deep OTM SPX puts with high premium
+- **Purpose**: Find deep OTM SPX puts with customizable premium and distance criteria
 - **Templates**: `quote1` + `optionschain1` + `order1`
 - **Output**: Current SPX price, option chain grid, execution summary
-- **Commands**: `spx 0`, `spx 1`, `spx 1 1.50`
+- **Commands**: Advanced format with required parameters:
+  - Conservative: `spx td1 minbid2.5 distance350` 
+  - Standard: `spx td1 minbid2.0 distance300`
+  - Aggressive: `spx td1 minbid1.0 distance200`
+  - 0DTE: `spx td0 minbid0.8 distance200`
+- **Header Format**: `SPX DEEP PREMIUM SCAN: Manual - SPX TD1 MINBID$2.00 DISTANCE300PTS`
+- **Strategy Types**: Conservative, Balanced, Aggressive, Market Condition, Premium Hunting
 
 ### 2. Quote (`quote`) 
 - **Purpose**: Real-time stock/index quotes
@@ -230,6 +294,8 @@ node quote.js AAPL
 ```bash
 node spx-deeppremium.js 0        # 0DTE (same day)
 node spx-deeppremium.js 1        # 1DTE (next trading day)
+node spx-deeppremium.js 1 1      # 1DTE targeting $1.00 bid
+node spx-deeppremium.js 0 2      # 0DTE targeting $2.00 bid
 ```
 
 ## Trading Notes

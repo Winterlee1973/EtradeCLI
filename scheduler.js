@@ -87,13 +87,13 @@ export async function startScheduler(slackApp) {
     timezone: 'America/New_York'
   });
   
-  // TEST: Every 5 minutes during market hours for spx 1 1
-  cron.schedule('*/5 9-16 * * 1-5', async () => {
-    console.log('🧪 Running 5-min test SPX 1 1 scan...');
+  // TEST: Every 2 minutes during market hours for spx td1 minbid2 distance300
+  cron.schedule('*/2 9-16 * * 1-5', async () => {
+    console.log('🧪 Running 2-min test SPX scan...');
     const timestamp = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
     
     try {
-      const { stdout } = await execAsync('AUTO_SCHEDULED=true node spx-deeppremium.js 1');
+      const { stdout } = await execAsync('AUTO_SCHEDULED=true node spx-deeppremium.js td1 minbid2 distance300');
       
       // Format using the rich Slack formatter
       const formattedMessage = formatSPXForSlack(stdout);
@@ -101,7 +101,7 @@ export async function startScheduler(slackApp) {
       await slackApp.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
         channel: USER_ID,
-        text: '🧪 *Test: SPX 1 $1.00 Scan*',
+        text: '🧪 *Test: SPX TD1 MINBID$2.00 DISTANCE300PTS*',
         ...formattedMessage
       });
       
@@ -112,7 +112,7 @@ export async function startScheduler(slackApp) {
       await slackApp.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
         channel: USER_ID,
-        text: `🚨 Test Scan Error: ${error.message}`
+        text: `🚨 Test SPX Scan Error: ${error.message}`
       });
     }
   }, {

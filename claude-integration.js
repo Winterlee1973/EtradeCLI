@@ -42,8 +42,8 @@ export class ClaudeIntegration {
       return await this.handleStrategyCommand(command);
     }
     
-    // Fallback to help
-    return this.getHelp();
+    // For unrecognized commands, return a simple message instead of full help
+    return `Command not recognized. Try: "help" for full documentation, "q TSLA" for quotes, or "spx td1 minbid2 distance300" for SPX scans.`;
   }
   
   // Detect quote requests like "q tsla", "quote aapl", "what's spy at?"

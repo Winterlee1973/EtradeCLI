@@ -7,11 +7,25 @@ import { promisify } from 'util';
 import { claude } from './claude-integration.js';
 import { startScheduler } from './scheduler.js';
 import { formatForSlack, formatQuoteForSlack } from './slack-formatter.js';
+import fs from 'fs';
 
 dotenv.config();
 
 const execAsync = promisify(exec);
 
+// Global state for refresh functionality
+let lastSpxCommand = 'node spx-deeppremium.js td1 minbid2 distance300'; // Default fallback
+
+// Load v2 help message
+function getV2HelpMessage() {
+  try {
+    const helpContent = fs.readFileSync('./bot-help-v2.md', 'utf8');
+    return helpContent;
+  } catch (error) {
+    console.error('Could not load bot-help-v2.md:', error);
+    return `# Lee's AI Trading Bot - v2\n\nBot help is available. Use trading commands like:\n• \`q TSLA\` - Get quote\n• \`spx td1 minbid2 distance300\` - SPX scan\n• \`orders\` - Check order status`;
+  }
+}
 
 // Initialize Slack app
 const app = new App({
@@ -30,9 +44,7 @@ console.log('Signing Secret length:', process.env.SLACK_SIGNING_SECRET?.length);
 // Trading command patterns
 const TRADING_COMMANDS = {
   quote: /^(q|quote)\s+([A-Z]{1,5})$/i,
-  deep_premium: /^(deep|spx)\s+([01])$/i,
-  deep_premium_target: /^spx\s+([01])\s+(\d*\.?\d+)$/i,
-  deep_premium_custom: /^spx\s+(\d+)\s+points?\s+(\d+\.?\d*)\s+premium$/i,
+  spx_strategy: /^spx\s+(td[01])\s+(minbid[\d.]+)\s+(distance\d+)$/i,
   orders: /^orders?$/i,
   orders_open: /^orders?\s+open$/i,
   orders_closed: /^orders?\s+closed$/i
@@ -70,6 +82,12 @@ function parseMessage(text) {
     return { type: 'claude', message: '' };
   }
   const cleanText = text.trim();
+  const lowerText = cleanText.toLowerCase();
+  
+  // Handle greeting messages with v2 help
+  if (lowerText === 'hi' || lowerText === 'hello' || lowerText === 'help' || lowerText === 'start') {
+    return { type: 'help', message: 'v2' };
+  }
   
   // Extract potential trading commands from anywhere in the message
   const words = cleanText.split(/\s+/);
@@ -88,31 +106,13 @@ function parseMessage(text) {
       };
     }
     
-    // Deep premium commands
-    if (TRADING_COMMANDS.deep_premium.test(remainingText)) {
-      console.log('✅ Matched deep_premium pattern for:', remainingText);
-      const match = remainingText.match(TRADING_COMMANDS.deep_premium);
+    // SPX strategy command (new format: spx td1 minbid2 distance300)
+    if (TRADING_COMMANDS.spx_strategy.test(remainingText)) {
+      console.log('✅ Matched spx_strategy pattern for:', remainingText);
+      const match = remainingText.match(TRADING_COMMANDS.spx_strategy);
       return {
         type: 'trading',
-        command: `node spx-deeppremium.js ${match[2]}`
-      };
-    }
-    
-    // Deep premium target bid
-    if (TRADING_COMMANDS.deep_premium_target.test(remainingText)) {
-      const match = remainingText.match(TRADING_COMMANDS.deep_premium_target);
-      return {
-        type: 'trading',
-        command: `node spx-deeppremium.js ${match[2]} --target-bid ${match[3]}`
-      };
-    }
-    
-    // Custom deep premium
-    if (TRADING_COMMANDS.deep_premium_custom.test(remainingText)) {
-      const match = remainingText.match(TRADING_COMMANDS.deep_premium_custom);
-      return {
-        type: 'trading',
-        command: `node spx-deeppremium.js --min-distance ${match[2]} --min-premium ${match[3]}`
+        command: `node spx-deeppremium.js ${match[1]} ${match[2]} ${match[3]}`
       };
     }
     
@@ -165,6 +165,13 @@ app.message(async ({ message, say }) => {
     
     if (parsed.type === 'trading') {
       console.log('💼 Executing trading command:', parsed.command);
+      
+      // Save SPX commands for refresh functionality
+      if (parsed.command.includes('spx-deeppremium.js')) {
+        lastSpxCommand = parsed.command;
+        console.log('💾 Saved SPX command for refresh:', lastSpxCommand);
+      }
+      
       const result = await executeCommand(parsed.command);
       console.log('📊 TRADING RESPONSE:');
       console.log('─'.repeat(50));
@@ -196,6 +203,13 @@ app.message(async ({ message, say }) => {
       console.log('📤 Sent trading response to Slack');
     } else if (parsed.type === 'orders') {
       await handleOrdersRequest(say, parsed);
+    } else if (parsed.type === 'help') {
+      console.log('📖 Sending v2 help message');
+      const helpMessage = getV2HelpMessage();
+      await say({
+        text: helpMessage
+      });
+      console.log('📤 Sent v2 help message to Slack');
     } else {
       console.log('🤖 Sending to Claude:', parsed.message);
       const response = await claude.handleCommand(parsed.message);
@@ -283,7 +297,8 @@ app.action('refresh_scan', async ({ ack, say }) => {
   await ack();
   
   try {
-    const result = await executeCommand('node spx-deeppremium.js 1');
+    console.log('🔄 Refreshing with saved command:', lastSpxCommand);
+    const result = await executeCommand(lastSpxCommand);
     const formattedResult = formatForSlack(result);
     
     if (formattedResult && formattedResult.blocks) {
@@ -512,6 +527,13 @@ app.event('app_mention', async ({ event, say }) => {
     
     if (parsed.type === 'trading') {
       console.log('💼 Executing trading command from mention:', parsed.command);
+      
+      // Save SPX commands for refresh functionality
+      if (parsed.command.includes('spx-deeppremium.js')) {
+        lastSpxCommand = parsed.command;
+        console.log('💾 Saved SPX command for refresh (mention):', lastSpxCommand);
+      }
+      
       const result = await executeCommand(parsed.command);
       console.log('📊 TRADING RESPONSE (MENTION):');
       console.log('─'.repeat(50));
@@ -544,6 +566,14 @@ app.event('app_mention', async ({ event, say }) => {
         }
       }
       console.log('📤 Sent trading response to Slack (mention)');
+    } else if (parsed.type === 'help') {
+      console.log('📖 Sending v2 help message (mention)');
+      const helpMessage = getV2HelpMessage();
+      await say({
+        text: helpMessage,
+        channel: event.channel
+      });
+      console.log('📤 Sent v2 help message to Slack (mention)');
     } else {
       console.log('🤖 Sending mention to Claude:', parsed.message);
       const response = await claude(parsed.message, event.user);
@@ -592,6 +622,33 @@ app.event('app_mention', async ({ event, say }) => {
     
     // Start scheduler for automated alerts
     await startScheduler(app);
+    
+    // Send v2 help message on server startup
+    try {
+      let USER_ID = process.env.SLACK_USER_ID;
+      
+      if (!USER_ID) {
+        // Find Lee's user ID
+        const usersList = await app.client.users.list({
+          token: process.env.SLACK_BOT_TOKEN
+        });
+        const leeUser = usersList.members.find(user => 
+          user.real_name?.toLowerCase().includes('lee') || user.name?.toLowerCase().includes('lee')
+        );
+        USER_ID = leeUser ? leeUser.id : 'D092322FRQA';
+        console.log(`🔍 Found user for startup message: ${leeUser?.real_name || 'Unknown'} (${USER_ID})`);
+      }
+      
+      const helpMessage = getV2HelpMessage();
+      await app.client.chat.postMessage({
+        token: process.env.SLACK_BOT_TOKEN,
+        channel: USER_ID,
+        text: `🚀 **Bot Restarted** - Lee's AI Trading Bot v2 is now online!\n\n${helpMessage}`
+      });
+      console.log('📖 Sent v2 help message on startup');
+    } catch (startupError) {
+      console.error('❌ Could not send startup message:', startupError.message);
+    }
     
     // Keep alive check every 15 minutes
     setInterval(async () => {

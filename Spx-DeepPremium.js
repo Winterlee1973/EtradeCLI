@@ -40,35 +40,45 @@ function isMarketHoliday(date) {
 
 
 // ----------------- CLI -----------------
-const argv = yargs(hideBin(process.argv))
-  .command('0', 'Scan 0DTE (same day expiration)', {}, (argv) => {
-    argv.expiration = 0;
-    argv.minDistance = 200;
-    argv.minPremium = 0.80;
-    argv.strategy = '0dte';
-  })
-  .command('1', 'Scan next trading day (1DTE)', {}, (argv) => {
-    argv.expiration = 1;
-    argv.minDistance = 300;
-    argv.minPremium = 2.00;
-    argv.strategy = '1dte';
-  })
-  .option('min-distance', { type: 'number', describe: 'Minimum distance from SPX (points)' })
-  .option('min-premium', { type: 'number', describe: 'Minimum bid premium' })
-  .option('target-bid', { type: 'number', describe: 'Target bid amount to find closest strike' })
-  .option('expiration', { type: 'number', describe: 'Expiration index (0 = today, 1 = tomorrow)' })
-  .example('$0 0', 'Scan 0DTE (200 points, $0.80 bid)')
-  .example('$0 1', 'Scan 1DTE (300 points, $2.00 bid)')
-  .example('$0 --min-distance 300 --min-premium 1.50', 'Custom parameters')
-  .argv;
-
-// Set defaults if not using commands
-if (!argv.strategy) {
-  argv.minDistance = argv.minDistance || 300;
-  argv.minPremium = argv.minPremium || 2.00;
-  argv.expiration = argv.expiration !== undefined ? argv.expiration : 1;
-  argv.strategy = '1dte';
+// New format: spx td1 minbid1 distance300
+// td1 = 1 day to expiration, minbid1 = $1.00 minimum bid, distance300 = 300 points distance
+function parseSpxCommand(args) {
+  const params = {
+    expiration: null,
+    minPremium: null,
+    minDistance: null,
+    strategy: null
+  };
+  
+  for (const arg of args) {
+    if (arg.startsWith('td')) {
+      const days = parseInt(arg.substring(2));
+      params.expiration = days;
+      params.strategy = days === 0 ? '0dte' : '1dte';
+    } else if (arg.startsWith('minbid')) {
+      params.minPremium = parseFloat(arg.substring(6));
+    } else if (arg.startsWith('distance')) {
+      params.minDistance = parseInt(arg.substring(8));
+    }
+  }
+  
+  // Validate required parameters
+  if (params.expiration === null || params.minPremium === null || params.minDistance === null) {
+    console.error('❌ Error: SPX strategy requires all parameters');
+    console.error('Format: spx td1 minbid1 distance300');
+    console.error('Examples:');
+    console.error('  spx td1 minbid2 distance300    - 1DTE, $2.00 min bid, 300 points out');
+    console.error('  spx td0 minbid0.8 distance200  - 0DTE, $0.80 min bid, 200 points out');
+    process.exit(1);
+  }
+  
+  return params;
 }
+
+const rawArgs = process.argv.slice(2);
+const argv = parseSpxCommand(rawArgs);
+
+// SPX strategy parameters are now required and validated in parseSpxCommand
 
 async function main() {
   // Check market hours (EST/EDT)
@@ -133,7 +143,7 @@ async function main() {
     if (!foundToday) {
       const isAutoScheduled = process.env.AUTO_SCHEDULED === 'true';
       const runType = isAutoScheduled ? 'Auto Scheduled' : 'Manual';
-      const commandStr = `spx ${argv.expiration}${argv.targetBid ? ` ${argv.targetBid}` : ''}`;
+      const commandStr = `SPX TD${argv.expiration} MINBID$${argv.minPremium.toFixed(2)} DISTANCE${argv.minDistance}PTS`;
       console.log(`🎯 SPX DEEP PREMIUM SCAN: ${runType} - ${commandStr.toUpperCase()}`);
       console.log('─────────────────────────');
       console.log(`⏰ Time: ${timestamp}`);
@@ -200,18 +210,14 @@ async function main() {
   // STRICT TEMPLATE OUTPUT using SharedTemplates
   const isAutoScheduled = process.env.AUTO_SCHEDULED === 'true';
   const runType = isAutoScheduled ? 'Auto Scheduled' : 'Manual';
-  const commandStr = `spx ${argv.expiration}${argv.targetBid ? ` ${argv.targetBid}` : ''}`;
+  const commandStr = `SPX TD${argv.expiration} MINBID$${argv.minPremium.toFixed(2)} DISTANCE${argv.minDistance}PTS`;
   
   console.log(`🎯 SPX DEEP PREMIUM SCAN: ${runType} - ${commandStr.toUpperCase()}`);
   console.log('─────────────────────────');
   console.log(`⏰ Time: ${timestamp}`);
   console.log(`📈 SPX: ${spot.toFixed(2)} (${marketStatus})`);
   console.log(`📅 Exp: ${expDateStr} ${argv.strategy === '1dte' ? dayNote : ''}`);
-  if (argv.targetBid) {
-    console.log(`🎯 Target: $${argv.targetBid.toFixed(2)} bid`);
-  } else {
-    console.log(`🎲 Criteria: ${argv.minDistance}pts/${argv.minPremium.toFixed(2)}bid`);
-  }
+  console.log(`🎲 Criteria: ${argv.minDistance}pts/${argv.minPremium.toFixed(2)}bid`);
   console.log('');
   
   // Fetch option chain

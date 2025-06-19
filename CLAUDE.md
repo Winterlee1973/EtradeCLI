@@ -1,5 +1,18 @@
 # Claude Instructions for EtradeCLI
 
+## Commands vs Scripts Architecture
+
+**COMMANDS** (Current - Fast, Direct Execution):
+- Single-query focus with specific parameters
+- Auto/Manual execution modes  
+- Examples: SPX scans, quotes, order status
+
+**SCRIPTS** (Future - Multi-Query Intelligence):
+- Complex analysis with recommendations
+- Market condition awareness
+- Cross-strategy comparisons
+- AI-powered decision making
+
 ## Quick Commands
 
 When the user asks for market data or trading strategies, use these shortcuts:
@@ -11,15 +24,57 @@ When the user asks for market data or trading strategies, use these shortcuts:
 - Run quotes immediately without asking for permission
 
 
-### SPX Deep Premium Scanner
-- "spx 0" → Run: `node spx-deeppremium.js 0` (200+ points, $0.80+ bid)
-- "spx 1" → Run: `node spx-deeppremium.js 1` (300+ points, $2.00+ bid)
-- "find deep puts" → Run: `node spx-deeppremium.js` (default 1DTE settings)
-- Custom: `node spx-deeppremium.js --min-distance 250 --min-premium 1.50`
-- **Execution-Ready Strategies:**
-  - 0DTE: 200+ points out with $0.80+ bid (today's expiration)
-  - 1DTE: 300+ points out with $2.00+ bid (next trading day)
-- Shows option chain grid and marks opportunities as "EXECUTION READY"
+### SPX Deep Premium Scanner (ADVANCED FORMAT REQUIRED)
+**New Required Format:** `spx td1 minbid2 distance300`
+
+#### Quick Command Reference:
+- **Conservative:** `spx td1 minbid2.5 distance350` - Safe premium collection
+- **Standard:** `spx td1 minbid2.0 distance300` - Recommended 1DTE strategy  
+- **Aggressive:** `spx td1 minbid1.0 distance200` - Higher risk/reward
+- **0DTE Safe:** `spx td0 minbid0.8 distance200` - Same day expiration
+- **High Vol:** `spx td1 minbid4.0 distance500` - Crazy market days
+- **Premium Hunt:** `spx td1 minbid5.0 distance600` - Maximum premium focus
+
+#### Strategy Categories:
+**Conservative Strategies:**
+- `spx td1 minbid2.5 distance350` - High premium, far OTM (safer)
+- `spx td1 minbid3.0 distance400` - Premium hunting, ultra-safe distance
+- `spx td0 minbid1.0 distance250` - 0DTE conservative with decent premium
+
+**Balanced Strategies:**
+- `spx td1 minbid2.0 distance300` - Standard 1DTE strategy (recommended)
+- `spx td1 minbid1.5 distance250` - Moderate risk, decent premium
+- `spx td0 minbid0.8 distance200` - Standard 0DTE strategy
+
+**Aggressive Strategies:**
+- `spx td1 minbid1.0 distance200` - Closer strikes, lower premium threshold
+- `spx td1 minbid0.5 distance150` - High risk/reward, close to money
+- `spx td0 minbid0.3 distance100` - 0DTE scalping (extreme risk)
+
+#### Parameters Explained:
+- **td1** = Time to expiration (1 day), **td0** = same day (0DTE)
+- **minbid2.0** = Minimum $2.00 bid requirement (premium threshold)
+- **distance300** = 300 points below current SPX price (safety buffer)
+
+**All parameters are REQUIRED** - old simple formats (spx 1, spx 0) will show error
+
+### Future Scripts (Not Yet Implemented)
+When these become available, use for complex analysis:
+
+**Market Intelligence Scripts:**
+- "analyze market conditions" → `market-scan auto-recommend`
+- "what's the best strategy right now?" → `intelligent-recommend current-market`
+- "compare strategies" → `analyze-strategies conservative balanced aggressive`
+
+**Portfolio Optimization Scripts:**
+- "optimize my approach" → `optimize-portfolio risk-medium`
+- "suggest best entry" → `market-intelligence-report`
+- "adjust for market conditions" → `auto-adjust current-positions`
+
+**Advanced Analysis Scripts:**
+- "multi-timeframe analysis" → `market-scan multi-timeframe`
+- "risk assessment" → `assess-risk current-strategy`
+- "historical pattern analysis" → `pattern-analysis spx-premium`
 
 ### Common Trading Terms
 - "dime bid" = $0.10 premium
@@ -45,8 +100,9 @@ Claude: Runs `node spx-deeppremium.js 1` and reports:
 ## Key Scripts in Project
 
 1. `quote.js` - Fetches stock/index quotes
-2. `spx-deeppremium.js` - Scans for deep premium SPX opportunities
+2. `spx-deeppremium.js` - Scans for deep premium SPX opportunities  
 3. `time-test.js` - Time-related utilities
+4. `bot-help-v2.md` - Template source for help documentation (help1 template)
 
 ## Response Style
 
