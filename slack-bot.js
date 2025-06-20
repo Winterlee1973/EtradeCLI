@@ -109,7 +109,7 @@ function formatAIResponseForSlack(response) {
 // Global state for refresh functionality
 let lastSpxCommand = 'node spx-deeppremium.js td1 minbid2 distance300'; // Default fallback
 
-// Help message with clickable strategies
+// Help message with available strategies
 function getV2HelpMessage() {
   return {
     text: "Lee's AI Trading Bot - v2 Help Guide",
@@ -132,7 +132,72 @@ function getV2HelpMessage() {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: '🎯 *SPX DEEP PREMIUM STRATEGY*'
+          text: '🎯 *Available Strategies*'
+        }
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: 'SPX Deep Premium 🔔' },
+            action_id: 'show_spx_strategy',
+            style: 'primary'
+          }
+        ]
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '     _Powered by: `spx-deeppremium.js`_'
+        }
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '⏰ *Scheduled Filters*'
+        }
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '🌅 **0DTE Filter**: Tue/Wed/Thu at 9:40 AM EST\n`🟡 0D • $0.80+ • 200+pts 🔔`\n\n🌆 **1DTE Filter**: Friday at 3:50 PM EST\n`🟡 1D • $2.00+ • 300+pts 🔔`\n\n🧪 **Test Filter**: Every 2 mins during market hours\n`🟡 1D • $2.00+ • 300+pts 🔔`'
+        }
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '📋 *Other Commands*'
+        }
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: '📋 View Orders' },
+            action_id: 'view_orders'
+          }
+        ]
+      }
+    ]
+  };
+}
+
+// SPX Strategy page with risk filters
+function getSPXStrategyMessage() {
+  return {
+    text: "SPX Deep Premium Strategy - Risk Filters",
+    blocks: [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '🎯 *SPX DEEP PREMIUM STRATEGIES*\n_Select your risk filter to scan for opportunities_'
         }
       },
       {
@@ -177,7 +242,7 @@ function getV2HelpMessage() {
         elements: [
           {
             type: 'button',
-            text: { type: 'plain_text', text: '🟡 1D • $2.00+ • 300+pts' },
+            text: { type: 'plain_text', text: '🟡 1D • $2.00+ • 300+pts 🔔' },
             action_id: 'strategy_standard',
             value: 'WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300'
           },
@@ -189,7 +254,7 @@ function getV2HelpMessage() {
           },
           {
             type: 'button',
-            text: { type: 'plain_text', text: '🟡 0D • $0.80+ • 200+pts' },
+            text: { type: 'plain_text', text: '🟡 0D • $0.80+ • 200+pts 🔔' },
             action_id: 'strategy_0dte_standard',
             value: 'WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200'
           }
@@ -230,9 +295,13 @@ function getV2HelpMessage() {
         elements: [
           {
             type: 'button',
+            text: { type: 'plain_text', text: '← Back to Help' },
+            action_id: 'back_to_help'
+          },
+          {
+            type: 'button',
             text: { type: 'plain_text', text: '📋 View Orders' },
-            action_id: 'view_orders',
-            style: 'primary'
+            action_id: 'view_orders'
           }
         ]
       }
@@ -301,6 +370,11 @@ function parseMessage(text) {
   // Handle help command
   if (lowerText === 'help') {
     return { type: 'help', message: 'v2' };
+  }
+  
+  // Handle SPX strategy command
+  if (lowerText === 'spx') {
+    return { type: 'spx_strategy' };
   }
   
   // Check for direct SQL SPX commands first (highest priority)
@@ -399,6 +473,11 @@ app.message(async ({ message, say }) => {
       const helpMessage = getV2HelpMessage();
       await say(helpMessage);
       console.log('📤 Sent v2 help message to Slack');
+    } else if (parsed.type === 'spx_strategy') {
+      console.log('📋 Sending SPX strategy page');
+      const spxMessage = getSPXStrategyMessage();
+      await say(spxMessage);
+      console.log('📤 Sent SPX strategy page to Slack');
     } else {
       console.log('🤖 Sending to Claude:', parsed.message);
       const response = await claude.handleCommand(parsed.message);
@@ -460,6 +539,38 @@ app.action(/^strategy_/, async ({ ack, say, body }) => {
   } catch (error) {
     await say({
       text: `❌ Error running strategy: ${error.message}`
+    });
+  }
+});
+
+// Handle SPX strategy button click
+app.action('show_spx_strategy', async ({ ack, say }) => {
+  await ack();
+  
+  try {
+    console.log('📋 Showing SPX strategy page');
+    const spxMessage = getSPXStrategyMessage();
+    await say(spxMessage);
+    console.log('📤 Sent SPX strategy page to Slack');
+  } catch (error) {
+    await say({
+      text: `❌ Error showing SPX strategy: ${error.message}`
+    });
+  }
+});
+
+// Handle back to help button click
+app.action('back_to_help', async ({ ack, say }) => {
+  await ack();
+  
+  try {
+    console.log('📖 Going back to help page');
+    const helpMessage = getV2HelpMessage();
+    await say(helpMessage);
+    console.log('📤 Sent help page to Slack');
+  } catch (error) {
+    await say({
+      text: `❌ Error showing help: ${error.message}`
     });
   }
 });
@@ -818,6 +929,14 @@ app.event('app_mention', async ({ event, say }) => {
         channel: event.channel
       });
       console.log('📤 Sent v2 help message to Slack (mention)');
+    } else if (parsed.type === 'spx_strategy') {
+      console.log('📋 Sending SPX strategy page (mention)');
+      const spxMessage = getSPXStrategyMessage();
+      await say({
+        ...spxMessage,
+        channel: event.channel
+      });
+      console.log('📤 Sent SPX strategy page to Slack (mention)');
     } else {
       console.log('🤖 Sending mention to Claude:', parsed.message);
       const response = await claude.handleCommand(parsed.message);
