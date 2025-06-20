@@ -8,10 +8,63 @@ import { claude } from './claude-integration.js';
 import { startScheduler } from './scheduler.js';
 import { formatForSlack, formatQuoteForSlack } from './slack-formatter.js';
 import fs from 'fs';
+import path from 'path';
 
 dotenv.config();
 
 const execAsync = promisify(exec);
+
+// Auto-detect SPX program files
+function getAvailablePrograms() {
+  try {
+    const files = fs.readdirSync('.');
+    const programFiles = files.filter(file => 
+      file.startsWith('SPX-DeepPremium-program-') && file.endsWith('.js')
+    );
+    
+    return programFiles.map(file => {
+      // Extract program name from filename: SPX-DeepPremium-program-0DTE1.js -> 0DTE1
+      const programName = file.replace('SPX-DeepPremium-program-', '').replace('.js', '');
+      return {
+        name: programName,
+        filename: file,
+        command: `spx ${programName.toLowerCase()}`,
+        actionId: `program_${programName.toLowerCase()}`
+      };
+    });
+  } catch (error) {
+    console.error('Error detecting program files:', error);
+    return [];
+  }
+}
+
+// Generate program buttons dynamically
+function generateProgramButtons() {
+  const programs = getAvailablePrograms();
+  
+  if (programs.length === 0) {
+    return [];
+  }
+  
+  // Group programs into rows of 2 buttons each
+  const buttonRows = [];
+  for (let i = 0; i < programs.length; i += 2) {
+    const rowPrograms = programs.slice(i, i + 2);
+    const elements = rowPrograms.map(program => ({
+      type: 'button',
+      text: { type: 'plain_text', text: program.command },
+      action_id: program.actionId,
+      style: 'primary'
+    }));
+    
+    buttonRows.push({
+      type: 'actions',
+      elements: elements
+    });
+  }
+  
+  return buttonRows;
+}
 
 // Convert AI response to Slack blocks
 function formatAIResponseForSlack(response) {
@@ -190,122 +243,138 @@ function getV2HelpMessage() {
 
 // SPX Strategy page with risk filters
 function getSPXStrategyMessage() {
-  return {
-    text: "SPX Deep Premium Strategy - Risk Filters",
-    blocks: [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: '🎯 *SPX DEEP PREMIUM STRATEGIES*\n_Select your risk filter to scan for opportunities_'
+  const blocks = [
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: '🎯 *SPX DEEP PREMIUM STRATEGIES*\n_Select your risk filter to scan for opportunities_'
+      }
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: '🛡️ *Conservative Risk Filters*'
+      }
+    },
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '🟢 1D • $3.00+ • 400+pts' },
+          action_id: 'strategy_ultra_safe',
+          value: 'WHERE tradingdays=1 AND minbid>=3.00 AND distance>=400'
+        },
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '🟢 1D • $2.50+ • 350+pts' },
+          action_id: 'strategy_safe',
+          value: 'WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350'
+        },
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '🟢 0D • $1.00+ • 250+pts' },
+          action_id: 'strategy_0dte_safe',
+          value: 'WHERE tradingdays=0 AND minbid>=1.00 AND distance>=250'
         }
-      },
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: '🛡️ *Conservative Risk Filters*'
+      ]
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: '⚖️ *Balanced Risk Filters*'
+      }
+    },
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '🟡 1D • $2.00+ • 300+pts 🔔' },
+          action_id: 'strategy_standard',
+          value: 'WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300'
+        },
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '🟡 1D • $1.50+ • 250+pts' },
+          action_id: 'strategy_moderate',
+          value: 'WHERE tradingdays=1 AND minbid>=1.50 AND distance>=250'
+        },
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '🟡 0D • $0.80+ • 200+pts 🔔' },
+          action_id: 'strategy_0dte_standard',
+          value: 'WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200'
         }
-      },
-      {
-        type: 'actions',
-        elements: [
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: '🟢 1D • $3.00+ • 400+pts' },
-            action_id: 'strategy_ultra_safe',
-            value: 'WHERE tradingdays=1 AND minbid>=3.00 AND distance>=400'
-          },
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: '🟢 1D • $2.50+ • 350+pts' },
-            action_id: 'strategy_safe',
-            value: 'WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350'
-          },
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: '🟢 0D • $1.00+ • 250+pts' },
-            action_id: 'strategy_0dte_safe',
-            value: 'WHERE tradingdays=0 AND minbid>=1.00 AND distance>=250'
-          }
-        ]
-      },
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: '⚖️ *Balanced Risk Filters*'
+      ]
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: '🚀 *Aggressive Risk Filters*'
+      }
+    },
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '🔴 1D • $1.00+ • 200+pts' },
+          action_id: 'strategy_aggressive',
+          value: 'WHERE tradingdays=1 AND minbid>=1.00 AND distance>=200'
+        },
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '🔴 1D • $0.50+ • 150+pts' },
+          action_id: 'strategy_close_money',
+          value: 'WHERE tradingdays=1 AND minbid>=0.50 AND distance>=150'
+        },
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '🔴 0D • $0.30+ • 100+pts' },
+          action_id: 'strategy_extreme_0dte',
+          value: 'WHERE tradingdays=0 AND minbid>=0.30 AND distance>=100'
         }
+      ]
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: '🤖 *Programs TEST - Shows 0DTE bids at 100, 150, and 200 points out*'
+      }
+    }
+  ];
+
+  // Add program buttons
+  const programButtons = generateProgramButtons();
+  console.log('🔍 DEBUG: Generated program buttons:', JSON.stringify(programButtons, null, 2));
+  blocks.push(...programButtons);
+
+  // Add navigation buttons
+  blocks.push({
+    type: 'actions',
+    elements: [
+      {
+        type: 'button',
+        text: { type: 'plain_text', text: '← Back to Help' },
+        action_id: 'back_to_help'
       },
       {
-        type: 'actions',
-        elements: [
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: '🟡 1D • $2.00+ • 300+pts 🔔' },
-            action_id: 'strategy_standard',
-            value: 'WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300'
-          },
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: '🟡 1D • $1.50+ • 250+pts' },
-            action_id: 'strategy_moderate',
-            value: 'WHERE tradingdays=1 AND minbid>=1.50 AND distance>=250'
-          },
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: '🟡 0D • $0.80+ • 200+pts 🔔' },
-            action_id: 'strategy_0dte_standard',
-            value: 'WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200'
-          }
-        ]
-      },
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: '🚀 *Aggressive Risk Filters*'
-        }
-      },
-      {
-        type: 'actions',
-        elements: [
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: '🔴 1D • $1.00+ • 200+pts' },
-            action_id: 'strategy_aggressive',
-            value: 'WHERE tradingdays=1 AND minbid>=1.00 AND distance>=200'
-          },
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: '🔴 1D • $0.50+ • 150+pts' },
-            action_id: 'strategy_close_money',
-            value: 'WHERE tradingdays=1 AND minbid>=0.50 AND distance>=150'
-          },
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: '🔴 0D • $0.30+ • 100+pts' },
-            action_id: 'strategy_extreme_0dte',
-            value: 'WHERE tradingdays=0 AND minbid>=0.30 AND distance>=100'
-          }
-        ]
-      },
-      {
-        type: 'actions',
-        elements: [
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: '← Back to Help' },
-            action_id: 'back_to_help'
-          },
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: '📋 View Orders' },
-            action_id: 'view_orders'
-          }
-        ]
+        type: 'button',
+        text: { type: 'plain_text', text: '📋 View Orders' },
+        action_id: 'view_orders'
       }
     ]
+  });
+
+  return {
+    text: "SPX Deep Premium Strategy - Risk Filters",
+    blocks: blocks
   };
 }
 
@@ -372,12 +441,28 @@ function parseMessage(text) {
     return { type: 'help', message: 'v2' };
   }
   
+  // Handle help spx command
+  if (lowerText === 'help spx') {
+    return { type: 'spx_strategy' };
+  }
+  
   // Handle SPX strategy command
   if (lowerText === 'spx') {
     return { type: 'spx_strategy' };
   }
   
-  // Check for direct SQL SPX commands first (highest priority)
+  // Check for SPX programs dynamically
+  const programs = getAvailablePrograms();
+  for (const program of programs) {
+    if (lowerText === program.command) {
+      return {
+        type: 'trading',
+        command: `node ${program.filename}`
+      };
+    }
+  }
+  
+  // Check for direct SQL SPX commands (highest priority)
   if (lowerText.startsWith('spx where') || lowerText.match(/^spx\s+td[01]\s+minbid[\d.]+\s+distance\d+$/i)) {
     return {
       type: 'trading',
@@ -678,6 +763,40 @@ app.action('trade_anyway', async ({ ack, say }) => {
   await say({
     text: `⚠️ *Trade Anyway Selected*\nPlease review the option chain above and manually select a strike that meets your risk tolerance.\n\n*Warning:* Trading below recommended criteria increases risk.`
   });
+});
+
+// Handle Program buttons dynamically
+app.action(/^program_/, async ({ ack, say, action }) => {
+  await ack();
+  
+  try {
+    // Extract program name from action_id: program_0dte1 -> 0dte1
+    const programKey = action.action_id.replace('program_', '');
+    const programs = getAvailablePrograms();
+    const program = programs.find(p => p.actionId === action.action_id);
+    
+    if (!program) {
+      await say(`❌ Program not found: ${programKey}`);
+      return;
+    }
+    
+    console.log(`🤖 Running ${program.name} program...`);
+    const result = await executeCommand(`node ${program.filename}`);
+    const formattedResult = formatForSlack(result);
+    
+    if (formattedResult && formattedResult.blocks) {
+      await say({
+        text: `🤖 ${program.name} Program Results`,
+        blocks: formattedResult.blocks
+      });
+    } else {
+      await say({
+        text: formattedResult
+      });
+    }
+  } catch (error) {
+    await say(`❌ Error running program: ${error.message}`);
+  }
 });
 
 // Helper function for orders requests
