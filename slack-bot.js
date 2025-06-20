@@ -303,6 +303,27 @@ function getSPXStrategyMessage() {
       type: 'section',
       text: {
         type: 'mrkdwn',
+        text: '🔍 *SQL Example*'
+      }
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'plain_text',
+        text: 'spx WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300'
+      }
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: '_Standard 1DTE with $2+ premium, 300+ points out_'
+      }
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
         text: '🤖 *Programs*'
       }
     }
@@ -331,7 +352,7 @@ function getSPXStrategyMessage() {
   });
 
   return {
-    text: "SPX Deep Premium Strategy - Risk Filters",
+    text: "SPX Deep Premium Strategy - SQL Examples",
     blocks: blocks
   };
 }
@@ -363,6 +384,7 @@ const TRADING_COMMANDS = {
 // Execute trading commands
 async function executeCommand(command) {
   try {
+    console.log('🔍 DEBUG: Executing command:', command);
     const { stdout, stderr } = await execAsync(command, { 
       cwd: process.cwd(),
       timeout: 30000 
@@ -424,7 +446,7 @@ function parseMessage(text) {
   if (lowerText.startsWith('spx where') || lowerText.match(/^spx\s+td[01]\s+minbid[\d.]+\s+distance\d+$/i)) {
     return {
       type: 'trading',
-      command: `node spx-deeppremium.js ${cleanText.replace(/^spx\s+/i, '')}`
+      command: `node Spx-DeepPremium.js '${cleanText.replace(/^spx\s+/i, '')}'`
     };
   }
   

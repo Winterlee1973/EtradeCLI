@@ -57,6 +57,18 @@ function parseSpxCommand(args) {
 }
 
 function parseSQLQuery(query) {
+  console.log('🔍 DEBUG: parseSQLQuery input:', query);
+  
+  // Decode HTML entities that might come from Slack
+  const decodedQuery = query
+    .replace(/&gt;/g, '>')
+    .replace(/&lt;/g, '<')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+  
+  console.log('🔍 DEBUG: after HTML decode:', decodedQuery);
+  
   const params = {
     expiration: null,
     minPremium: null,
@@ -68,13 +80,15 @@ function parseSQLQuery(query) {
   };
   
   // Extract WHERE clause
-  const whereMatch = query.match(/WHERE\s+(.+)/i);
+  const whereMatch = decodedQuery.match(/WHERE\s+(.+)/i);
   if (!whereMatch) {
+    console.log('🔍 DEBUG: No WHERE match found');
     showSQLHelp();
     process.exit(1);
   }
   
   const whereClause = whereMatch[1];
+  console.log('🔍 DEBUG: WHERE clause:', whereClause);
   
   // Parse conditions using regex to properly handle AND separators
   // This regex splits on AND but not when it's part of BETWEEN...AND
@@ -110,21 +124,25 @@ function parseSQLQuery(query) {
     }
   });
   
+  console.log('🔍 DEBUG: conditions array:', conditions);
+  
   for (const condition of conditions) {
     const trimmed = condition.trim();
+    console.log('🔍 DEBUG: processing condition:', trimmed);
     
     // Handle BETWEEN operator
     if (trimmed.match(/minbid\s+BETWEEN\s+([\d.]+)\s+AND\s+([\d.]+)/i)) {
       const match = trimmed.match(/minbid\s+BETWEEN\s+([\d.]+)\s+AND\s+([\d.]+)/i);
       params.minPremium = parseFloat(match[1]);
       params.maxPremium = parseFloat(match[2]);
+      console.log('🔍 DEBUG: BETWEEN minbid:', params.minPremium, 'to', params.maxPremium);
     }
     // Handle comparison operators for minbid  
     else if (trimmed.match(/minbid\s*([><=]+)\s*([\d.]+)/i)) {
       const match = trimmed.match(/minbid\s*([><=]+)\s*([\d.]+)/i);
       const operator = match[1];
       const value = parseFloat(match[2]);
-      
+      console.log('🔍 DEBUG: minbid operator:', operator, 'value:', value);
       
       if (operator === '>' || operator === '>=') {
         params.minPremium = operator === '>' ? value : value;
@@ -134,12 +152,14 @@ function parseSQLQuery(query) {
         params.minPremium = value;
         params.maxPremium = value;
       }
+      console.log('🔍 DEBUG: set minPremium to:', params.minPremium);
     }
     // Handle comparison operators for distance
     else if (trimmed.match(/distance\s*([><=]+)\s*(\d+)/i)) {
       const match = trimmed.match(/distance\s*([><=]+)\s*(\d+)/i);
       const operator = match[1];
       const value = parseInt(match[2]);
+      console.log('🔍 DEBUG: distance operator:', operator, 'value:', value);
       
       if (operator === '>' || operator === '>=') {
         params.minDistance = operator === '>' ? value + 1 : value;
@@ -149,12 +169,17 @@ function parseSQLQuery(query) {
         params.minDistance = value;
         params.maxDistance = value;
       }
+      console.log('🔍 DEBUG: set minDistance to:', params.minDistance);
     }
     // Handle tradingdays
     else if (trimmed.match(/tradingdays\s*=\s*(\d+)/i)) {
       const match = trimmed.match(/tradingdays\s*=\s*(\d+)/i);
       params.expiration = parseInt(match[1]);
       params.strategy = params.expiration === 0 ? '0dte' : '1dte';
+      console.log('🔍 DEBUG: set expiration to:', params.expiration);
+    }
+    else {
+      console.log('🔍 DEBUG: condition did not match any pattern');
     }
   }
   
@@ -167,7 +192,7 @@ function parseSQLQuery(query) {
   
   // Set defaults if not specified
   if (params.minPremium === null) params.minPremium = 0.10;
-  if (params.minDistance === null) params.minDistance = 100;
+  if (params.minDistance === null) params.minDistance = 0;
   
   return params;
 }

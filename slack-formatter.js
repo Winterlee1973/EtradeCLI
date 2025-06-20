@@ -224,7 +224,7 @@ export function formatSPXForSlack(terminalOutput) {
       chainHeader += ` - *📅 ${header.exp}*`;
     }
     let chainText = chainHeader + '\n```';
-    chainText += 'Strike   Bid   Ask  Dist\n';
+    chainText += 'Strike   Bid   Ask  Points Out\n';
     chainText += '─────────────────────────\n';
     
     chainData.forEach(row => {

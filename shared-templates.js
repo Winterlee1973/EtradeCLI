@@ -60,7 +60,7 @@ export const SharedTemplates = {
   optionschain1: {
     // Standard grid (Strike/Bid/Ask/Dist)
     terminal: {
-      header: () => '📋 OPTION CHAIN:\nStrike  Bid   Ask   Dist\n──────────────────────────',
+      header: () => '📋 OPTION CHAIN:\nStrike  Bid   Ask   Points Out\n──────────────────────────────',
       
       row: (strike, bid, ask, distance, marker = ' ') => {
         return `${marker} ${strike.toString().padEnd(6)} ${bid.padStart(5)} ${ask.padStart(5)} ${distance.toString().padStart(4)}`;
@@ -78,7 +78,7 @@ export const SharedTemplates = {
       },
       
       table: (rows) => {
-        let table = '```\nStrike   Bid   Ask  Dist\n─────────────────────────\n';
+        let table = '```\nStrike   Bid   Ask  Points Out\n─────────────────────────────\n';
         rows.forEach(row => {
           const marker = SharedTemplates.optionschain1.slack.marker(row.marker);
           table += `${marker} ${row.strike.padEnd(6)} ${row.bid.padStart(5)} ${row.ask.padStart(5)} ${row.distance.toString().padStart(4)}\n`;
@@ -727,6 +727,83 @@ export const TemplatePresets = {
     ]
   },
   
+  // Option Chain Analyzer Template
+  optionChainAnalyzer: {
+    terminal: {
+      header: (spxPrice, dte, expDate, totalPuts) => [
+        `📈 SPX: $${spxPrice.toFixed(2)}`,
+        `📅 Analyzing ${dte === 0 ? '0DTE (today)' : '1DTE (next trading day)'} options`,
+        `📅 Expiration: ${expDate}`,
+        `📊 Total puts in chain: ${totalPuts}`
+      ].join('\n'),
+      
+      // MAIN TEMPLATE: Show surrounding strikes with context
+      contextHeader: (targetBid) => [
+        `🎯 $${targetBid.toFixed(2)} BIDS WITH SURROUNDING CONTEXT:`,
+        'Strike\tBid\tAsk\tDistance\tNote',
+        '─'.repeat(50)
+      ].join('\n'),
+      
+      // Enhanced data row with context markers
+      contextRow: (strike, bid, ask, distance, note = '') => 
+        `${strike}\t$${bid.toFixed(2)}\t$${ask.toFixed(2)}\t${distance} pts\t${note}`,
+      
+      // Legacy search header (keep for compatibility)
+      searchHeader: (targetBid) => [
+        `🎯 SEARCHING FOR $${targetBid.toFixed(2)} BIDS:`,
+        'Strike\tBid\tAsk\tDistance',
+        '─'.repeat(40)
+      ].join('\n'),
+      
+      dataRow: (strike, bid, ask, distance) => 
+        `${strike}\t$${bid.toFixed(2)}\t$${ask.toFixed(2)}\t${distance} pts`,
+      
+      summary: (count, targetBid, closest = null) => {
+        let result = `✅ Found ${count} strikes with $${targetBid.toFixed(2)} bid`;
+        if (closest) {
+          const distance = Math.round(closest.spot - closest.strike);
+          result += `\n💡 Closest: ${closest.strike} strike (${distance} points out)`;
+        }
+        return result;
+      },
+      
+      // Proof of lowest bid section
+      proofHeader: () => [
+        `🔍 PROOF OF LOWEST BID:`,
+        'Strike\tBid\tAsk\tDistance\tNote',
+        '─'.repeat(50)
+      ].join('\n'),
+      
+      noResults: (targetBid) => `❌ No exact $${targetBid.toFixed(2)} bids found`,
+      
+      nearbyHeader: (targetBid) => [
+        `🔍 NEAREST BIDS TO $${targetBid.toFixed(2)}:`,
+        'Strike\tBid\tAsk\tDistance',
+        '─'.repeat(40)
+      ].join('\n'),
+      
+      bidLevelSummary: (bid, count, furthest, spot) => {
+        if (count === 0) {
+          return `$${bid.toFixed(2)} bids: None found`;
+        }
+        const distance = Math.round(spot - furthest.strike);
+        return `$${bid.toFixed(2)} bids: ${count} strikes, furthest at ${furthest.strike} (${distance} points out)`;
+      }
+    },
+    
+    errors: {
+      noExpiration: (dte) => `❌ NO ${dte === 0 ? '0DTE' : '1DTE'} EXPIRATION AVAILABLE`,
+      apiError: (message) => [
+        `❌ Error fetching option chain: ${message}`,
+        '💡 This could be due to:',
+        '   - Market closed and no recent data available',
+        '   - Yahoo Finance API issues',
+        '   - Network connectivity problems',
+        '   - Invalid expiration date'
+      ].join('\n')
+    }
+  },
+
   // Intelligent Recommendation Engine SCRIPT (future)
   intelligentRecommendations: {
     templates: ['quote1', 'optionschain1', 'order1', 'recommendation1', 'reasoning1'],

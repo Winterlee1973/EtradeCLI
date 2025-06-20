@@ -1,0 +1,28 @@
+🎯 SPX DEEP PREMIUM SCAN: Auto Scheduled - SPX WHERE TRADINGDAYS=1 AND MINBID>=$0.10 AND DISTANCE>=100PTS
+─────────────────────────
+⏰ Time: 06/20/2025, 03:50:01 PM
+📈 SPX: 5960.75 (OPEN)
+📅 Exp: Monday, June 23, 2025 (Next Trading Day)
+🎲 Criteria: 100pts/0.10bid
+
+📋 OPTION CHAIN:
+Strike  Bid   Ask   Dist
+──────────────────────────
+✅ 5840    3.20  3.40  121
+✅ 5845    3.40  3.60  116
+✅ 5850    3.80  3.90  111
+✅ 5855    4.10  4.30  106
+✅ 5860    4.60  4.70  101
+💰 5865    4.90  5.00   96
+💰 5870    5.30  5.40   91
+💰 5875    5.80  5.90   86
+💰 5880    6.30  6.50   81
+
+🎯 EXECUTION SUMMARY:
+🎯 SELL 1x SPX 5860P
+💰 Premium: $4.60
+📊 Credit: $460
+📏 Distance: 101 points from SPX
+🛡️ Safety Meter: 🟡 Moderate
+✅ YES
+

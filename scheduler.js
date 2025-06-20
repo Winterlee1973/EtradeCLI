@@ -31,7 +31,7 @@ export async function startScheduler(slackApp) {
   cron.schedule('40 9 * * 2,3,4', async () => {
     console.log('🌅 Running 0DTE alert (Tue/Wed/Thu 9:40 AM)...');
     try {
-      const { stdout } = await execAsync('AUTO_SCHEDULED=true node spx-deeppremium.js WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200');
+      const { stdout } = await execAsync('AUTO_SCHEDULED=true node Spx-DeepPremium.js WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200');
       
       // Format using the rich Slack formatter
       const formattedMessage = formatSPXForSlack(stdout);
@@ -61,7 +61,7 @@ export async function startScheduler(slackApp) {
   cron.schedule('50 15 * * 5', async () => {
     console.log('🌆 Running 1DTE alert (Friday 3:50 PM)...');
     try {
-      const { stdout } = await execAsync('AUTO_SCHEDULED=true node spx-deeppremium.js WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300');
+      const { stdout } = await execAsync('AUTO_SCHEDULED=true node Spx-DeepPremium.js WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300');
       
       // Format using the rich Slack formatter
       const formattedMessage = formatSPXForSlack(stdout);

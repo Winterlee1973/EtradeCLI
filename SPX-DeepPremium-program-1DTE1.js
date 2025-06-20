@@ -117,9 +117,9 @@ async function main() {
         const lowestStrike = sameBidPuts.reduce((min, p) => p.strike < min ? p.strike : min, target.strike);
         
         if (lowestStrike < target.strike) {
-          console.log(`${target.distance} pts out (${target.strike}-lowest ${lowestStrike}): $${put.bid.toFixed(2)} bid`);
+          console.log(`${target.distance} pts out (${lowestStrike}-${target.strike}): $${put.bid.toFixed(2)} bid`);
         } else {
-          console.log(`${target.distance} pts out (${target.strike}): $${put.bid.toFixed(2)} bid`);
+          console.log(`${target.distance} pts out (${target.strike}-${target.strike}): $${put.bid.toFixed(2)} bid`);
         }
       } else if (put) {
         console.log(`${target.distance} pts out (${target.strike}): $0.00 bid`);
