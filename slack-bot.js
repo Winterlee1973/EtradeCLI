@@ -38,6 +38,48 @@ function getAvailablePrograms() {
   }
 }
 
+// Auto-detect available strategies
+function getAvailableStrategies() {
+  const strategies = [];
+  
+  // Always include the main SPX Deep Premium strategy
+  strategies.push({
+    name: 'SPX Deep Premium',
+    displayName: 'SPX Deep Premium 🔔',
+    actionId: 'show_spx_strategy',
+    file: 'spx-deeppremium.js'
+  });
+  
+  // Add any other strategy files found
+  try {
+    const files = fs.readdirSync('.');
+    
+    // Look for other strategy files (customize pattern as needed)
+    const strategyFiles = files.filter(file => 
+      file.endsWith('-strategy.js') || 
+      (file.endsWith('.js') && file.includes('strategy') && !file.includes('framework'))
+    );
+    
+    strategyFiles.forEach(file => {
+      const strategyName = file.replace(/-strategy\.js|\.js/, '').replace(/-/g, ' ');
+      const capitalizedName = strategyName.split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      
+      strategies.push({
+        name: capitalizedName,
+        displayName: capitalizedName,
+        actionId: `show_${file.replace('.js', '').replace(/-/g, '_')}`,
+        file: file
+      });
+    });
+  } catch (error) {
+    console.error('Error detecting strategy files:', error);
+  }
+  
+  return strategies;
+}
+
 // Generate program buttons dynamically
 function generateProgramButtons() {
   const programs = getAvailablePrograms();
@@ -52,7 +94,7 @@ function generateProgramButtons() {
     const rowPrograms = programs.slice(i, i + 2);
     const elements = rowPrograms.map(program => ({
       type: 'button',
-      text: { type: 'plain_text', text: program.command },
+      text: { type: 'plain_text', text: program.command.toUpperCase() },
       action_id: program.actionId,
       style: 'primary'
     }));
@@ -62,6 +104,43 @@ function generateProgramButtons() {
       elements: elements
     });
   }
+  
+  return buttonRows;
+}
+
+// Generate strategy buttons dynamically
+function generateStrategyButtons() {
+  const strategies = getAvailableStrategies();
+  
+  if (strategies.length === 0) {
+    return [];
+  }
+  
+  // Group strategies into rows of 2 buttons each
+  const buttonRows = [];
+  for (let i = 0; i < strategies.length; i += 2) {
+    const rowStrategies = strategies.slice(i, i + 2);
+    const elements = rowStrategies.map(strategy => ({
+      type: 'button',
+      text: { type: 'plain_text', text: strategy.displayName },
+      action_id: strategy.actionId,
+      style: 'primary'
+    }));
+    
+    buttonRows.push({
+      type: 'actions',
+      elements: elements
+    });
+  }
+  
+  // Add powered by text
+  buttonRows.push({
+    type: 'section',
+    text: {
+      type: 'mrkdwn',
+      text: `     _Powered by: ${strategies.map(s => '`' + s.file + '`').join(', ')}_`
+    }
+  });
   
   return buttonRows;
 }
@@ -188,38 +267,7 @@ function getV2HelpMessage() {
           text: '🎯 *Available Strategies*'
         }
       },
-      {
-        type: 'actions',
-        elements: [
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: 'SPX Deep Premium 🔔' },
-            action_id: 'show_spx_strategy',
-            style: 'primary'
-          }
-        ]
-      },
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: '     _Powered by: `spx-deeppremium.js`_'
-        }
-      },
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: '⏰ *Scheduled Filters*'
-        }
-      },
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: '🌅 **0DTE Filter**: Tue/Wed/Thu at 9:40 AM EST\n`🟡 0D • $0.80+ • 200+pts 🔔`\n\n🌆 **1DTE Filter**: Friday at 3:50 PM EST\n`🟡 1D • $2.00+ • 300+pts 🔔`\n\n🧪 **Test Filter**: Every 2 mins during market hours\n`🟡 1D • $2.00+ • 300+pts 🔔`'
-        }
-      },
+      ...generateStrategyButtons(),
       {
         type: 'section',
         text: {
@@ -248,104 +296,14 @@ function getSPXStrategyMessage() {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: '🎯 *SPX DEEP PREMIUM STRATEGIES*\n_Select your risk filter to scan for opportunities_'
+        text: '🎯 *SPX DEEP PREMIUM HELP*'
       }
     },
     {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: '🛡️ *Conservative Risk Filters*'
-      }
-    },
-    {
-      type: 'actions',
-      elements: [
-        {
-          type: 'button',
-          text: { type: 'plain_text', text: '🟢 1D • $3.00+ • 400+pts' },
-          action_id: 'strategy_ultra_safe',
-          value: 'WHERE tradingdays=1 AND minbid>=3.00 AND distance>=400'
-        },
-        {
-          type: 'button',
-          text: { type: 'plain_text', text: '🟢 1D • $2.50+ • 350+pts' },
-          action_id: 'strategy_safe',
-          value: 'WHERE tradingdays=1 AND minbid>=2.50 AND distance>=350'
-        },
-        {
-          type: 'button',
-          text: { type: 'plain_text', text: '🟢 0D • $1.00+ • 250+pts' },
-          action_id: 'strategy_0dte_safe',
-          value: 'WHERE tradingdays=0 AND minbid>=1.00 AND distance>=250'
-        }
-      ]
-    },
-    {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: '⚖️ *Balanced Risk Filters*'
-      }
-    },
-    {
-      type: 'actions',
-      elements: [
-        {
-          type: 'button',
-          text: { type: 'plain_text', text: '🟡 1D • $2.00+ • 300+pts 🔔' },
-          action_id: 'strategy_standard',
-          value: 'WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300'
-        },
-        {
-          type: 'button',
-          text: { type: 'plain_text', text: '🟡 1D • $1.50+ • 250+pts' },
-          action_id: 'strategy_moderate',
-          value: 'WHERE tradingdays=1 AND minbid>=1.50 AND distance>=250'
-        },
-        {
-          type: 'button',
-          text: { type: 'plain_text', text: '🟡 0D • $0.80+ • 200+pts 🔔' },
-          action_id: 'strategy_0dte_standard',
-          value: 'WHERE tradingdays=0 AND minbid>=0.80 AND distance>=200'
-        }
-      ]
-    },
-    {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: '🚀 *Aggressive Risk Filters*'
-      }
-    },
-    {
-      type: 'actions',
-      elements: [
-        {
-          type: 'button',
-          text: { type: 'plain_text', text: '🔴 1D • $1.00+ • 200+pts' },
-          action_id: 'strategy_aggressive',
-          value: 'WHERE tradingdays=1 AND minbid>=1.00 AND distance>=200'
-        },
-        {
-          type: 'button',
-          text: { type: 'plain_text', text: '🔴 1D • $0.50+ • 150+pts' },
-          action_id: 'strategy_close_money',
-          value: 'WHERE tradingdays=1 AND minbid>=0.50 AND distance>=150'
-        },
-        {
-          type: 'button',
-          text: { type: 'plain_text', text: '🔴 0D • $0.30+ • 100+pts' },
-          action_id: 'strategy_extreme_0dte',
-          value: 'WHERE tradingdays=0 AND minbid>=0.30 AND distance>=100'
-        }
-      ]
-    },
-    {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: '🤖 *Programs TEST - Shows 0DTE bids at 100, 150, and 200 points out*'
+        text: '🤖 *Programs*'
       }
     }
   ];
@@ -1124,10 +1082,11 @@ app.event('app_mention', async ({ event, say }) => {
         console.log(`🔍 Found user for startup message: ${leeUser?.real_name || 'Unknown'} (${USER_ID})`);
       }
       
+      const helpMessage = getV2HelpMessage();
       await app.client.chat.postMessage({
         token: process.env.SLACK_BOT_TOKEN,
         channel: USER_ID,
-        text: "🚀 Bot Restarted - Lee's AI Trading Bot v2 is now online!"
+        ...helpMessage
       });
       console.log('📖 Sent v2 help message on startup');
     } catch (startupError) {

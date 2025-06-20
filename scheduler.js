@@ -87,37 +87,6 @@ export async function startScheduler(slackApp) {
     timezone: 'America/New_York'
   });
   
-  // TEST: Every 2 minutes during market hours for spx td1 minbid2 distance300
-  cron.schedule('*/2 9-16 * * 1-5', async () => {
-    console.log('🧪 Running 2-min test SPX scan...');
-    const timestamp = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
-    
-    try {
-      const { stdout } = await execAsync('AUTO_SCHEDULED=true node spx-deeppremium.js WHERE tradingdays=1 AND minbid>=2.00 AND distance>=300');
-      
-      // Format using the rich Slack formatter
-      const formattedMessage = formatSPXForSlack(stdout);
-      
-      await slackApp.client.chat.postMessage({
-        token: process.env.SLACK_BOT_TOKEN,
-        channel: USER_ID,
-        text: '🧪 *Test: SPX TD1 MINBID$2.00 DISTANCE300PTS*',
-        ...formattedMessage
-      });
-      
-      console.log('✅ Test SPX scan sent successfully');
-    } catch (error) {
-      console.error('❌ Test SPX scan failed:', error);
-      
-      await slackApp.client.chat.postMessage({
-        token: process.env.SLACK_BOT_TOKEN,
-        channel: USER_ID,
-        text: `🚨 Test SPX Scan Error: ${error.message}`
-      });
-    }
-  }, {
-    timezone: 'America/New_York'
-  });
   
   // Test alert (runs every minute for testing - remove in production)
   if (process.env.NODE_ENV === 'development') {
@@ -144,6 +113,5 @@ export async function startScheduler(slackApp) {
   console.log('📅 Scheduler initialized with Eastern Time:');
   console.log('   🌅 0DTE Alerts: Tue/Wed/Thu at 9:40 AM EST');
   console.log('   🌆 1DTE Alert: Friday at 3:50 PM EST');
-  console.log('   🧪 TEST: SPX 1 1 every 5 mins during market hours');
   console.log(`   📨 Sending DMs to channel: ${USER_ID}`);
 }
