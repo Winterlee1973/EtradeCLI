@@ -64,15 +64,17 @@ async function main() {
       year: 'numeric'
     });
     
-    // Output header
-    console.log('🤖 0DTE1 PROGRAM RESULTS');
-    console.log('─────────────────────────');
-    console.log(`⏰ Time: ${timestamp}`);
-    console.log(`📈 SPX: ${spot.toFixed(2)}`);
-    console.log(`📅 0DTE Expiration: ${expDateStr} (Today)`);
+    // Output using templates
+    const template = SharedTemplates.spxProgram.terminal;
+    
+    console.log(template.header('0DTE1'));
+    console.log(template.divider());
+    console.log(template.time(timestamp));
+    console.log(template.spxPrice(spot));
+    console.log(template.expiration(`0DTE Expiration: ${expDateStr}`, '(Today)'));
     console.log('');
-    console.log('💰 BID PRICES AT KEY LEVELS:');
-    console.log('─────────────────────────');
+    console.log(template.bidSection.header());
+    console.log(template.bidSection.divider());
     
     // Find and display bids
     for (const target of targets) {
@@ -83,14 +85,14 @@ async function main() {
         const lowestStrike = sameBidPuts.reduce((min, p) => p.strike < min ? p.strike : min, target.strike);
         
         if (lowestStrike < target.strike) {
-          console.log(`${target.distance} pts out (${lowestStrike}-${target.strike}): $${put.bid.toFixed(2)} bid`);
+          console.log(template.bidSection.row(target.distance, target.strike, put.bid, `${lowestStrike}-${target.strike}`));
         } else {
-          console.log(`${target.distance} pts out (${target.strike}-${target.strike}): $${put.bid.toFixed(2)} bid`);
+          console.log(template.bidSection.row(target.distance, target.strike, put.bid));
         }
       } else if (put) {
-        console.log(`${target.distance} pts out (${target.strike}): $0.00 bid`);
+        console.log(template.bidSection.row(target.distance, target.strike, 0));
       } else {
-        console.log(`${target.distance} pts out (${target.strike}): No data`);
+        console.log(template.bidSection.noData(target.distance, target.strike));
       }
     }
     

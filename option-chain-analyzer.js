@@ -31,9 +31,13 @@ async function analyzeOptionChain(dte = 1, targetBid = null) {
     let expiration = null;
     let expDate = null;
     
+    // Calculate target date based on DTE
+    const today = new Date();
+    let targetDate = new Date(today);
+    let tradingDaysFound = 0;
+    
     if (dte === 0) {
-      // Find today's expiration
-      const today = new Date();
+      // For 0DTE, find today's expiration
       for (const exp of optionInfo.expirationDates) {
         const utcDate = new Date(exp);
         const properDate = new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate());
@@ -44,16 +48,48 @@ async function analyzeOptionChain(dte = 1, targetBid = null) {
         }
       }
     } else {
-      // Find next trading day
+      // For any DTE > 0, count trading days forward
+      let currentDate = new Date(today);
+      currentDate.setDate(currentDate.getDate() + 1); // Start from tomorrow
+      
+      while (tradingDaysFound < dte) {
+        // Check if this is a trading day (not weekend, not holiday)
+        if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6 && !isMarketHoliday(currentDate)) {
+          tradingDaysFound++;
+          if (tradingDaysFound === dte) {
+            targetDate = new Date(currentDate);
+            break;
+          }
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+        
+        // Safety check to prevent infinite loops
+        if (currentDate.getTime() - today.getTime() > 365 * 24 * 60 * 60 * 1000) {
+          console.log(`⚠️  Could not find ${dte} trading days within a year`);
+          return;
+        }
+      }
+      
+      // Find the closest available expiration to our target date
+      let closestExp = null;
+      let closestDiff = Infinity;
+      
       for (const exp of optionInfo.expirationDates) {
         const utcDate = new Date(exp);
         const properDate = new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate());
-        if (properDate > new Date() && properDate.getDay() !== 0 && properDate.getDay() !== 6 && !isMarketHoliday(properDate)) {
-          expiration = exp;
-          expDate = properDate;
-          break;
+        
+        // Only consider dates on or after our target date
+        if (properDate >= targetDate) {
+          const diff = Math.abs(properDate.getTime() - targetDate.getTime());
+          if (diff < closestDiff) {
+            closestDiff = diff;
+            closestExp = exp;
+            expDate = properDate;
+          }
         }
       }
+      
+      expiration = closestExp;
     }
     
     if (!expiration) {
@@ -96,11 +132,15 @@ async function analyzeOptionChain(dte = 1, targetBid = null) {
         // NEW CONTEXT-AWARE DISPLAY
         console.log('\n' + TemplatePresets.optionChainAnalyzer.terminal.contextHeader(targetBid));
         
-        // Show a few strikes above highest target for context
+        // Show a few strikes with the next higher bid level for context
         const highestTargetStrike = Math.max(...targetStrikes.map(p => p.strike));
+        const nextHigherBid = Math.min(...puts
+          .filter(p => p.bid > targetBid && p.bid > 0)
+          .map(p => p.bid));
+        
         const contextAbove = puts
-          .filter(p => p.strike > highestTargetStrike)
-          .sort((a, b) => a.strike - b.strike)
+          .filter(p => p.strike > highestTargetStrike && p.bid === nextHigherBid)
+          .sort((a, b) => b.strike - a.strike)
           .slice(0, 2);
         
         contextAbove.forEach(put => {
@@ -178,9 +218,12 @@ const args = process.argv.slice(2);
 if (args.length === 0) {
   console.log('Usage: node option-chain-analyzer.js [dte] [bid]');
   console.log('Examples:');
-  console.log('  node option-chain-analyzer.js 1 0.05    # Find $0.05 bids for 1DTE');
-  console.log('  node option-chain-analyzer.js 0 0.10    # Find $0.10 bids for 0DTE');
-  console.log('  node option-chain-analyzer.js 1         # Show bid level summary for 1DTE');
+  console.log('  node option-chain-analyzer.js 0 0.05    # Find $0.05 bids for 0DTE (today)');
+  console.log('  node option-chain-analyzer.js 1 0.10    # Find $0.10 bids for 1DTE (tomorrow)');
+  console.log('  node option-chain-analyzer.js 2 0.20    # Find $0.20 bids for 2DTE (Tuesday)');
+  console.log('  node option-chain-analyzer.js 7 0.50    # Find $0.50 bids for 1 week out');
+  console.log('  node option-chain-analyzer.js 30 1.00   # Find $1.00 bids for ~1 month out');
+  console.log('  node option-chain-analyzer.js 5         # Show bid level summary for 5DTE');
   process.exit(0);
 }
 

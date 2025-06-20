@@ -175,7 +175,7 @@ function parseSQLQuery(query) {
     else if (trimmed.match(/tradingdays\s*=\s*(\d+)/i)) {
       const match = trimmed.match(/tradingdays\s*=\s*(\d+)/i);
       params.expiration = parseInt(match[1]);
-      params.strategy = params.expiration === 0 ? '0dte' : '1dte';
+      params.strategy = `${params.expiration}dte`;
       console.log('🔍 DEBUG: set expiration to:', params.expiration);
     }
     else {
@@ -210,7 +210,7 @@ function parseOldFormat(args) {
     if (arg.startsWith('td')) {
       const days = parseInt(arg.substring(2));
       params.expiration = days;
-      params.strategy = days === 0 ? '0dte' : '1dte';
+      params.strategy = `${days}dte`;
     } else if (arg.startsWith('minbid')) {
       params.minPremium = parseFloat(arg.substring(6));
     } else if (arg.startsWith('distance')) {
@@ -229,26 +229,12 @@ function parseOldFormat(args) {
 }
 
 function showSQLHelp() {
-  console.error('🔍 SPX SQL Query Format:');
-  console.error('');
-  console.error('NEW SQL FORMAT (Recommended):');
-  console.error('  spx WHERE tradingdays=1 AND minbid>2.00 AND distance=300');
-  console.error('  spx WHERE tradingdays=0 AND minbid>=1.50 AND distance<=250');
-  console.error('  spx WHERE tradingdays=1 AND minbid BETWEEN 1.00 AND 3.00 AND distance>200');
-  console.error('');
-  console.error('OLD FORMAT (Still supported):');
-  console.error('  spx td1 minbid2 distance300');
-  console.error('  spx td0 minbid0.8 distance200');
-  console.error('');
-  console.error('SQL OPERATORS:');
-  console.error('  = (equals), > (greater than), < (less than)');
-  console.error('  >= (greater than or equal), <= (less than or equal)');
-  console.error('  BETWEEN value1 AND value2');
-  console.error('');
-  console.error('PARAMETERS:');
-  console.error('  tradingdays: 0 (0DTE) or 1 (1DTE)');
-  console.error('  minbid: minimum bid amount (e.g., 2.00 for $2.00)');
-  console.error('  distance: points below current SPX price');
+  // Copy and paste look from Option Chain Analyzer style
+  console.error('❌ SPX SQL Query Help:');
+  console.error('Usage: node spx-deeppremium.js "WHERE tradingdays=X AND minbid>=Y"');
+  console.error('Examples:');
+  console.error('  WHERE tradingdays=1 AND minbid>=0.50');
+  console.error('  WHERE tradingdays=3 AND minbid>=0.10');
 }
 
 function formatCommandString(argv) {
@@ -328,8 +314,9 @@ async function main() {
   
   const spot = quote.regularMarketPrice;
   
-  // Find the right expiration date, skipping weekends
+  // Find the right expiration date based on trading days
   let expiration, expDate;
+  
   if (argv.expiration === 0) {
     // 0DTE - check if today has an expiration and if market is open
     const today = new Date();
@@ -355,10 +342,9 @@ async function main() {
       const isAutoScheduled = process.env.AUTO_SCHEDULED === 'true';
       const runType = isAutoScheduled ? 'Auto Scheduled' : 'Manual';
       const commandStr = formatCommandString(argv);
-      console.log(`🎯 SPX DEEP PREMIUM SCAN: ${runType} - ${commandStr.toUpperCase()}`);
-      console.log('─────────────────────────');
-      console.log(`⏰ Time: ${timestamp}`);
-      console.log(`📈 SPX: ${spot.toFixed(2)} (${marketStatus})`);
+      // Use Option Chain Analyzer template format
+      console.log(`📈 SPX: $${spot.toFixed(2)}`);
+      console.log(`📅 Analyzing 0DTE (today) options`);
       console.log(`📅 0DTE: No same-day expiration available`);
       console.log('');
       console.log('💡 SUGGESTED TRADE:');
@@ -372,10 +358,9 @@ async function main() {
       const isAutoScheduled = process.env.AUTO_SCHEDULED === 'true';
       const runType = isAutoScheduled ? 'Auto Scheduled' : 'Manual';
       const commandStr = `spx ${argv.expiration}${argv.targetBid ? ` ${argv.targetBid}` : ''}`;
-      console.log(`🎯 SPX DEEP PREMIUM SCAN: ${runType} - ${commandStr.toUpperCase()}`);
-      console.log('─────────────────────────');
-      console.log(`⏰ Time: ${timestamp}`);
-      console.log(`📈 SPX: ${spot.toFixed(2)} (${marketStatus})`);
+      // Use Option Chain Analyzer template format
+      console.log(`📈 SPX: $${spot.toFixed(2)}`);
+      console.log(`📅 Analyzing 0DTE (today) options`);
       console.log(`📅 0DTE: Market closed`);
       console.log('');
       console.log('💡 SUGGESTED TRADE:');
@@ -384,24 +369,56 @@ async function main() {
       return;
     }
   } else {
-    // 1DTE - find next trading day's expiration  
-    // Start from index 0 since it could be tomorrow's expiration
-    for (let i = 0; i < optionInfo.expirationDates.length; i++) {
-      const testExp = optionInfo.expirationDates[i];
+    // Count forward the specified number of trading days
+    const today = new Date();
+    let currentDate = new Date(today);
+    currentDate.setDate(currentDate.getDate() + 1); // Start from tomorrow
+    let tradingDaysFound = 0;
+    let targetDate = null;
+    
+    // Count trading days forward
+    while (tradingDaysFound < argv.expiration) {
+      // Check if this is a trading day (not weekend, not holiday)
+      if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6 && !isMarketHoliday(currentDate)) {
+        tradingDaysFound++;
+        if (tradingDaysFound === argv.expiration) {
+          targetDate = new Date(currentDate);
+          break;
+        }
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+      
+      // Safety check to prevent infinite loops
+      if (currentDate.getTime() - today.getTime() > 365 * 24 * 60 * 60 * 1000) {
+        console.log(`⚠️  Could not find ${argv.expiration} trading days within a year`);
+        return;
+      }
+    }
+    
+    // Find the closest available expiration to our target date
+    let closestExp = null;
+    let closestDiff = Infinity;
+    
+    for (const testExp of optionInfo.expirationDates) {
       const utcDate = new Date(testExp);
       const properDate = new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate());
       
-      // Skip weekends and holidays, and only use dates after today
-      if (properDate > new Date() && properDate.getDay() !== 0 && properDate.getDay() !== 6 && !isMarketHoliday(properDate)) {
-        expiration = testExp;
-        expDate = properDate;
-        break;
+      // Only consider dates on or after our target date
+      if (properDate >= targetDate) {
+        const diff = Math.abs(properDate.getTime() - targetDate.getTime());
+        if (diff < closestDiff) {
+          closestDiff = diff;
+          closestExp = testExp;
+          expDate = properDate;
+        }
       }
     }
-    // Fallback if no weekday found
+    
+    expiration = closestExp;
+    
     if (!expiration) {
-      expiration = optionInfo.expirationDates[argv.expiration];
-      expDate = new Date(expiration);
+      console.log(`⚠️  No expiration found for ${argv.expiration} trading days out`);
+      return;
     }
   }
   
@@ -412,23 +429,30 @@ async function main() {
     year: 'numeric'
   });
   
-  // Check if this is actually tomorrow or a different day due to holidays
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const isTomorrow = expDate.toDateString() === tomorrow.toDateString();
-  const dayNote = isTomorrow ? '(Tomorrow)' : '(Next Trading Day)';
+  // Calculate day note based on DTE
+  let dayNote = '';
+  if (argv.expiration === 0) {
+    dayNote = '(Today)';
+  } else if (argv.expiration === 1) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const isTomorrow = expDate.toDateString() === tomorrow.toDateString();
+    dayNote = isTomorrow ? '(Tomorrow)' : '(Next Trading Day)';
+  } else {
+    dayNote = `(${argv.expiration} Trading Days)`;
+  }
   
   // STRICT TEMPLATE OUTPUT using SharedTemplates
   const isAutoScheduled = process.env.AUTO_SCHEDULED === 'true';
   const runType = isAutoScheduled ? 'Auto Scheduled' : 'Manual';
   const commandStr = formatCommandString(argv);
   
-  console.log(`🎯 SPX DEEP PREMIUM SCAN: ${runType} - ${commandStr.toUpperCase()}`);
-  console.log('─────────────────────────');
-  console.log(`⏰ Time: ${timestamp}`);
-  console.log(`📈 SPX: ${spot.toFixed(2)} (${marketStatus})`);
-  console.log(`📅 Exp: ${expDateStr} ${argv.strategy === '1dte' ? dayNote : ''}`);
-  console.log(`🎲 Criteria: ${argv.minDistance}pts/${argv.minPremium.toFixed(2)}bid`);
+  // Use Option Chain Analyzer template format
+  const dteText = argv.expiration === 0 ? '0DTE (today)' : `${argv.expiration}DTE`;
+  console.log(`📈 SPX: $${spot.toFixed(2)}`);
+  console.log(`📅 Analyzing ${dteText} options`);
+  console.log(`📅 Expiration: ${expDateStr.replace(/,.*/, '')} ${dayNote}`);
+  console.log(`📊 Criteria: ${argv.minDistance}pts/${argv.minPremium.toFixed(2)}bid`);
   console.log('');
   
   // Fetch option chain
@@ -544,7 +568,7 @@ async function main() {
   
   
   // Use SharedTemplates for option chain display
-  console.log(SharedTemplates.optionschain1.terminal.header());
+  console.log('📋 OPTION CHAIN:\nStrike  Bid   Ask   Points Out\n──────────────────────────────');
   
   // Show 4 strikes above and below (9 total)
   const startIdx = Math.max(0, bestIndex - 4);
@@ -569,24 +593,24 @@ async function main() {
       else if (hasPremium) marker = '💰';
     }
     
-    console.log(SharedTemplates.optionschain1.terminal.row(
-      put.strike,
-      put.bid.toFixed(2),
-      put.ask.toFixed(2),
-      put.distance_from_spx.toFixed(0),
-      marker
-    ));
+    // Copy and paste look from Option Chain Analyzer
+    const strike = put.strike.toString().padEnd(6);
+    const bid = put.bid.toFixed(2).padStart(5);
+    const ask = put.ask.toFixed(2).padStart(5);
+    const distance = put.distance_from_spx.toFixed(0).padStart(4);
+    console.log(`${marker} ${strike} ${bid} ${ask} ${distance}`);
   }
   
   // Use SharedTemplates for execution summary
   console.log('');
   if (opportunities.length > 0) {
     const bestQualified = opportunities.sort((a, b) => b.bid - a.bid)[0];
-    console.log(SharedTemplates.order1.terminal.header());
-    console.log(SharedTemplates.order1.terminal.sell(1, 'SPX', bestQualified.strike));
-    console.log(SharedTemplates.order1.terminal.premium(bestQualified.bid.toFixed(2)));
-    console.log(SharedTemplates.order1.terminal.credit((bestQualified.bid * 100).toFixed(0)));
-    console.log(SharedTemplates.order1.terminal.distance(bestQualified.distance_from_spx.toFixed(0)));
+    console.log('🎯 EXECUTION SUMMARY:');
+    // Copy and paste look from Option Chain Analyzer style
+    console.log(`🎯 SELL 1x SPX ${bestQualified.strike}P`);
+    console.log(`💰 Premium: $${bestQualified.bid.toFixed(2)}`);
+    console.log(`📊 Credit: $${(bestQualified.bid * 100).toFixed(0)}`);
+    console.log(`📏 Distance: ${bestQualified.distance_from_spx.toFixed(0)} points from SPX`);
     
     // Add Safety Meter using shared utility
     const distance = bestQualified.distance_from_spx;
@@ -606,15 +630,16 @@ async function main() {
       safetyEmoji = '🔴';
     }
     
-    console.log(SharedTemplates.order1.terminal.safety(safetyEmoji, safetyLevel));
+    // Copy and paste look from Option Chain Analyzer style
+    console.log(`🛡️ Safety Meter: ${safetyEmoji} ${safetyLevel}`);
     
     // Only show YES/NO for regular scanning, not target bid mode
     if (!argv.targetBid) {
-      console.log(SharedTemplates.order1.terminal.yes());
+      console.log('✅ YES');
     }
   } else {
     if (!argv.targetBid) {
-      console.log(SharedTemplates.order1.terminal.no());
+      console.log('❌ NO');
     }
   }
   console.log('');

@@ -107,3 +107,29 @@ When Lee asks questions, help build the appropriate query:
 - Always mention the current price when discussing strikes
 - When Lee mentions specific bid amounts, USE THOSE EXACT AMOUNTS in queries
 - Help Lee explore the data by suggesting related queries
+
+## Template System Architecture
+
+**IMPORTANT**: All new programs should use templates from `shared-templates.js` instead of hardcoding output formats.
+
+### Key Files:
+1. `shared-templates.js` - **CENTRALIZED TEMPLATE SYSTEM** - All display templates stored here
+2. `Spx-DeepPremium.js` - Main SPX scanner (uses `optionschain1` template)
+3. `SPX-DeepPremium-program-0DTE1.js` - Uses `spxProgram` template
+4. `SPX-DeepPremium-program-1DTE1.js` - Uses `spxProgram` template
+
+### SPX Program Template Usage:
+```javascript
+import { SharedTemplates } from './shared-templates.js';
+
+const template = SharedTemplates.spxProgram.terminal;
+console.log(template.header('PROGRAM_NAME'));
+console.log(template.bidSection.row(distance, strike, bid));
+```
+
+### Available Template Categories:
+- `quote1` - Stock/index price display  
+- `optionschain1` - Strike/Bid/Ask/Points Out grid
+- `order1` - Trade execution summaries
+- `orderstatus1` - Order tracking
+- `spxProgram` - **NEW**: Standardized program output format
