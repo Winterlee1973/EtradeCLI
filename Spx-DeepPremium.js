@@ -7,6 +7,7 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import yahooFinance from './yahoo-finance-quiet.js';
 import { SharedTemplates } from './shared-templates.js';
+import { SafetyAssessment } from './safety-assessment.js';
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -618,19 +619,9 @@ async function main() {
   if (opportunities.length > 0) {
     const bestQualified = opportunities.sort((a, b) => b.bid - a.bid)[0];
     
-    // Add Safety Meter calculation
-    const distance = bestQualified.distance_from_spx;
-    let safetyLevel;
-    
-    if (distance >= 300) {
-      safetyLevel = '🟢🟢 Very Safe';
-    } else if (distance >= 200) {
-      safetyLevel = '🟢 Safe';
-    } else if (distance >= 100) {
-      safetyLevel = '🟡 Moderate';
-    } else {
-      safetyLevel = '🔴 Risky';
-    }
+    // Use new safety assessment system
+    const safety = SafetyAssessment.calculateSafety(bestQualified.distance_from_spx, argv.expiration);
+    const safetyDisplay = `${safety.emoji} ${safety.description}`;
     
     // Use minimal execution format
     console.log(SharedTemplates.optionChainTemplate2.terminal.execution(
@@ -638,7 +629,7 @@ async function main() {
       bestQualified.bid, 
       bestQualified.bid * 100,
       bestQualified.distance_from_spx,
-      safetyLevel
+      safetyDisplay
     ));
     
     console.log(SharedTemplates.optionChainTemplate2.terminal.result(true));
