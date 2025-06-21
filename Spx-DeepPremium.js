@@ -447,12 +447,11 @@ async function main() {
   const runType = isAutoScheduled ? 'Auto Scheduled' : 'Manual';
   const commandStr = formatCommandString(argv);
   
-  // Use Option Chain Analyzer template format
-  const dteText = argv.expiration === 0 ? '0DTE (today)' : `${argv.expiration}DTE`;
-  console.log(`📈 SPX: $${spot.toFixed(2)}`);
-  console.log(`📅 Analyzing ${dteText} options`);
-  console.log(`📅 Expiration: ${expDateStr.replace(/,.*/, '')} ${dayNote}`);
-  console.log(`📊 Criteria: ${argv.minDistance}pts/${argv.minPremium.toFixed(2)}bid`);
+  // Use SPX Deep Premium template
+  const criteria = `${argv.minDistance}pts/${argv.minPremium.toFixed(2)}bid`;
+  console.log(SharedTemplates.spxDeepPremium.terminal.header(
+    spot, argv.expiration, expDateStr.replace(/,.*/, ''), dayNote, criteria
+  ));
   console.log('');
   
   // Fetch option chain
@@ -568,7 +567,7 @@ async function main() {
   
   
   // Use SharedTemplates for option chain display
-  console.log('📋 OPTION CHAIN:\nStrike  Bid   Ask   Points Out\n──────────────────────────────');
+  console.log(SharedTemplates.spxDeepPremium.terminal.chainHeader());
   
   // Show 4 strikes above and below (9 total)
   const startIdx = Math.max(0, bestIndex - 4);
@@ -593,24 +592,21 @@ async function main() {
       else if (hasPremium) marker = '💰';
     }
     
-    // Copy and paste look from Option Chain Analyzer
-    const strike = put.strike.toString().padEnd(6);
-    const bid = put.bid.toFixed(2).padStart(5);
-    const ask = put.ask.toFixed(2).padStart(5);
-    const distance = put.distance_from_spx.toFixed(0).padStart(4);
-    console.log(`${marker} ${strike} ${bid} ${ask} ${distance}`);
+    // Use SPX Deep Premium template
+    console.log(SharedTemplates.spxDeepPremium.terminal.chainRow(
+      put.strike, put.bid, put.ask, put.distance_from_spx, marker
+    ));
   }
   
   // Use SharedTemplates for execution summary
   console.log('');
   if (opportunities.length > 0) {
     const bestQualified = opportunities.sort((a, b) => b.bid - a.bid)[0];
-    console.log('🎯 EXECUTION SUMMARY:');
-    // Copy and paste look from Option Chain Analyzer style
-    console.log(`🎯 SELL 1x SPX ${bestQualified.strike}P`);
-    console.log(`💰 Premium: $${bestQualified.bid.toFixed(2)}`);
-    console.log(`📊 Credit: $${(bestQualified.bid * 100).toFixed(0)}`);
-    console.log(`📏 Distance: ${bestQualified.distance_from_spx.toFixed(0)} points from SPX`);
+    console.log(SharedTemplates.spxDeepPremium.terminal.executionHeader());
+    console.log(SharedTemplates.spxDeepPremium.terminal.sell(1, 'SPX', bestQualified.strike));
+    console.log(SharedTemplates.spxDeepPremium.terminal.premium(bestQualified.bid));
+    console.log(SharedTemplates.spxDeepPremium.terminal.credit(bestQualified.bid * 100));
+    console.log(SharedTemplates.spxDeepPremium.terminal.distance(bestQualified.distance_from_spx));
     
     // Add Safety Meter using shared utility
     const distance = bestQualified.distance_from_spx;
@@ -630,16 +626,16 @@ async function main() {
       safetyEmoji = '🔴';
     }
     
-    // Copy and paste look from Option Chain Analyzer style
-    console.log(`🛡️ Safety Meter: ${safetyEmoji} ${safetyLevel}`);
+    // Use SPX Deep Premium template
+    console.log(SharedTemplates.spxDeepPremium.terminal.safety(safetyEmoji, safetyLevel));
     
     // Only show YES/NO for regular scanning, not target bid mode
     if (!argv.targetBid) {
-      console.log('✅ YES');
+      console.log(SharedTemplates.spxDeepPremium.terminal.yes());
     }
   } else {
     if (!argv.targetBid) {
-      console.log('❌ NO');
+      console.log(SharedTemplates.spxDeepPremium.terminal.no());
     }
   }
   console.log('');

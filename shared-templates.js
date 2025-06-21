@@ -2,7 +2,7 @@
 
 /**
  * Simplified Shared Templates for EtradeCLI
- * TERMINAL: Only Option Chain Analyzer template allowed
+ * TERMINAL: Option Chain Analyzer + SPX Deep Premium templates
  * SLACK: All templates preserved for Slack bot functionality
  */
 
@@ -177,8 +177,8 @@ export const SharedTemplates = {
     }
   },
 
-  // ===== ONLY TERMINAL TEMPLATE ALLOWED =====
-  // Option Chain Analyzer - THE ONLY TERMINAL TEMPLATE
+  // ===== TERMINAL TEMPLATES =====
+  // Option Chain Analyzer Terminal Template
   optionChainAnalyzer: {
     terminal: {
       header: (spxPrice, dte, expDate, totalPuts) => {
@@ -231,6 +231,47 @@ export const SharedTemplates = {
     }
   },
 
+  // SPX Deep Premium Scanner Terminal Template
+  spxDeepPremium: {
+    terminal: {
+      header: (spxPrice, dte, expDate, dayNote, criteria) => {
+        const dteText = dte === 0 ? '0DTE (today)' : `${dte}DTE`;
+        return [
+          `📈 SPX: $${spxPrice.toFixed(2)}`,
+          `📅 Analyzing ${dteText} options`,
+          `📅 Expiration: ${expDate} ${dayNote}`,
+          `📊 Criteria: ${criteria}`
+        ].join('\n');
+      },
+      
+      chainHeader: () => `📋 OPTION CHAIN:\nStrike  Bid   Ask   Points Out\n──────────────────────────────`,
+      
+      chainRow: (strike, bid, ask, distance, marker = '') => {
+        const strikeStr = strike.toString().padEnd(6);
+        const bidStr = bid.toFixed(2).padStart(5);
+        const askStr = ask.toFixed(2).padStart(5);
+        const distanceStr = distance.toFixed(0).padStart(4);
+        return `${marker} ${strikeStr} ${bidStr} ${askStr} ${distanceStr}`;
+      },
+      
+      executionHeader: () => '🎯 EXECUTION SUMMARY:',
+      
+      sell: (quantity, symbol, strike) => `🎯 SELL ${quantity}x ${symbol} ${strike}P`,
+      
+      premium: (amount) => `💰 Premium: $${amount.toFixed(2)}`,
+      
+      credit: (amount) => `📊 Credit: $${amount.toFixed(0)}`,
+      
+      distance: (points) => `📏 Distance: ${points.toFixed(0)} points from SPX`,
+      
+      safety: (emoji, level) => `🛡️ Safety Meter: ${emoji} ${level}`,
+      
+      yes: () => '✅ YES',
+      
+      no: () => '❌ NO'
+    }
+  },
+
   // Status templates - UTILITY ONLY
   status: {
     error: (message) => `❌ Error: ${message}`,
@@ -280,13 +321,14 @@ export const SharedTemplates = {
   }
 };
 
-// Template Presets - ONLY OPTION CHAIN ANALYZER FOR TERMINAL
+// Template Presets - TERMINAL TEMPLATES AVAILABLE
 export const TemplatePresets = {
-  // ALL TERMINAL OUTPUT USES OPTION CHAIN ANALYZER
+  // TERMINAL TEMPLATES
   optionChainAnalyzer: SharedTemplates.optionChainAnalyzer,
+  spxDeepPremium: SharedTemplates.spxDeepPremium,
   
   // Slack presets remain unchanged
-  spxDeepPremium: {
+  spxDeepPremiumSlack: {
     slack: ['quote1.slack', 'optionschain1.slack', 'order1.slack']
   },
   orderStatus: {

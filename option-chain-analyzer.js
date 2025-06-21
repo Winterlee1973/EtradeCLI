@@ -177,8 +177,12 @@ async function analyzeOptionChain(dte = 1, targetBid = null) {
           console.log(TemplatePresets.optionChainAnalyzer.terminal.contextRow(put.strike, put.bid, put.ask, distance, 'Context'));
         });
         
-        const closest = targetStrikes.length > 0 ? { strike: targetStrikes[0].strike, spot } : null;
-        console.log('\n' + TemplatePresets.optionChainAnalyzer.terminal.summary(targetStrikes.length, targetBid, closest));
+        // New 2-row summary section
+        console.log('\n📊 SUMMARY:');
+        const closestStrike = targetStrikes[0].strike;
+        const lowestStrike = Math.min(...targetStrikes.map(p => p.strike));
+        console.log(`Bid of $${targetBid.toFixed(2)} found at strike ${closestStrike}`);
+        console.log(`Recommended strike with same bid: ${lowestStrike}`);
       }
     } else {
       // Show summary of bid levels
