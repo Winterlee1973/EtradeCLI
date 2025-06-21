@@ -447,12 +447,11 @@ async function main() {
   const runType = isAutoScheduled ? 'Auto Scheduled' : 'Manual';
   const commandStr = formatCommandString(argv);
   
-  // Use SPX Deep Premium template
+  // Minimal header
   const criteria = `${argv.minDistance}pts/${argv.minPremium.toFixed(2)}bid`;
-  console.log(SharedTemplates.spxDeepPremium.terminal.header(
+  console.log(SharedTemplates.optionChainTemplate2.terminal.header(
     spot, argv.expiration, expDateStr.replace(/,.*/, ''), dayNote, criteria
   ));
-  console.log('');
   
   // Fetch option chain
   let chain;
@@ -557,17 +556,28 @@ async function main() {
       opportunities.length = 0; // Clear and rebuild based on both criteria
       opportunities.push(...premiumStrikes.filter(r => r.distance_from_spx >= argv.minDistance));
     } else {
-      // No premium strikes found, show around target distance area
-      const targetStrike = Math.floor((spot - argv.minDistance) / 5) * 5;
-      bestIndex = allPuts.findIndex(p => p.strike >= targetStrike);
-      if (bestIndex === -1) bestIndex = allPuts.length - 5;
+      // No premium strikes found - show the highest bid strikes available
+      // This will show the closest thing to dollar bids, even if they don't qualify
+      const highestBidStrike = records
+        .filter(r => r.bid > 0 && r.distance_from_spx > 0)
+        .sort((a, b) => b.bid - a.bid)[0];
+      
+      if (highestBidStrike) {
+        bestIndex = allPuts.findIndex(p => p.strike === highestBidStrike.strike);
+        if (bestIndex === -1) bestIndex = Math.floor(allPuts.length / 2);
+      } else {
+        // Fallback to target distance area
+        const targetStrike = Math.floor((spot - argv.minDistance) / 5) * 5;
+        bestIndex = allPuts.findIndex(p => p.strike >= targetStrike);
+        if (bestIndex === -1) bestIndex = allPuts.length - 5;
+      }
       if (bestIndex < 4) bestIndex = 4;
     }
   }
   
   
   // Use SharedTemplates for option chain display
-  console.log(SharedTemplates.spxDeepPremium.terminal.chainHeader());
+  console.log(SharedTemplates.optionChainTemplate2.terminal.chainHeader());
   
   // Show 4 strikes above and below (9 total)
   const startIdx = Math.max(0, bestIndex - 4);
@@ -575,68 +585,65 @@ async function main() {
   
   for (let i = startIdx; i <= endIdx; i++) {
     const put = allPuts[i];
-    let marker = ' ';
+    let status = 'CONTEXT';
     
     if (argv.targetBid) {
       // TARGET BID MODE: Mark the closest match
       if (best && put.strike === best.strike) {
-        marker = '🎯';
+        status = 'TARGET';
       }
     } else {
-      // REGULAR MODE: Mark based on criteria
+      // REGULAR MODE: Determine qualification based on criteria
       const hasPremium = put.bid >= argv.minPremium;
       const hasDistance = put.distance_from_spx >= argv.minDistance;
       const fullyQualifies = hasPremium && hasDistance;
       
-      if (fullyQualifies) marker = '✅';
-      else if (hasPremium) marker = '💰';
+      if (fullyQualifies) {
+        status = 'QUALIFIES';
+      } else if (hasPremium) {
+        status = "DOESN'T QUALIFY";
+      } else {
+        status = 'CONTEXT';
+      }
     }
     
-    // Use SPX Deep Premium template
-    console.log(SharedTemplates.spxDeepPremium.terminal.chainRow(
-      put.strike, put.bid, put.ask, put.distance_from_spx, marker
+    // Use SPX Deep Premium template with new grid format
+    console.log(SharedTemplates.optionChainTemplate2.terminal.chainRow(
+      put.strike, put.bid, put.ask, put.distance_from_spx, status
     ));
   }
   
-  // Use SharedTemplates for execution summary
+  // Use minimal execution summary
   console.log('');
   if (opportunities.length > 0) {
     const bestQualified = opportunities.sort((a, b) => b.bid - a.bid)[0];
-    console.log(SharedTemplates.spxDeepPremium.terminal.executionHeader());
-    console.log(SharedTemplates.spxDeepPremium.terminal.sell(1, 'SPX', bestQualified.strike));
-    console.log(SharedTemplates.spxDeepPremium.terminal.premium(bestQualified.bid));
-    console.log(SharedTemplates.spxDeepPremium.terminal.credit(bestQualified.bid * 100));
-    console.log(SharedTemplates.spxDeepPremium.terminal.distance(bestQualified.distance_from_spx));
     
-    // Add Safety Meter using shared utility
+    // Add Safety Meter calculation
     const distance = bestQualified.distance_from_spx;
-    let safetyLevel, safetyEmoji;
+    let safetyLevel;
     
     if (distance >= 300) {
-      safetyLevel = 'Very Safe';
-      safetyEmoji = '🟢🟢';
+      safetyLevel = '🟢🟢 Very Safe';
     } else if (distance >= 200) {
-      safetyLevel = 'Safe';
-      safetyEmoji = '🟢';
+      safetyLevel = '🟢 Safe';
     } else if (distance >= 100) {
-      safetyLevel = 'Moderate';
-      safetyEmoji = '🟡';
+      safetyLevel = '🟡 Moderate';
     } else {
-      safetyLevel = 'Risky';
-      safetyEmoji = '🔴';
+      safetyLevel = '🔴 Risky';
     }
     
-    // Use SPX Deep Premium template
-    console.log(SharedTemplates.spxDeepPremium.terminal.safety(safetyEmoji, safetyLevel));
+    // Use minimal execution format
+    console.log(SharedTemplates.optionChainTemplate2.terminal.execution(
+      bestQualified.strike, 
+      bestQualified.bid, 
+      bestQualified.bid * 100,
+      bestQualified.distance_from_spx,
+      safetyLevel
+    ));
     
-    // Only show YES/NO for regular scanning, not target bid mode
-    if (!argv.targetBid) {
-      console.log(SharedTemplates.spxDeepPremium.terminal.yes());
-    }
+    console.log(SharedTemplates.optionChainTemplate2.terminal.result(true));
   } else {
-    if (!argv.targetBid) {
-      console.log(SharedTemplates.spxDeepPremium.terminal.no());
-    }
+    console.log(SharedTemplates.optionChainTemplate2.terminal.result(false));
   }
   console.log('');
 }

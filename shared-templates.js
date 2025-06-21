@@ -2,7 +2,7 @@
 
 /**
  * Simplified Shared Templates for EtradeCLI
- * TERMINAL: Option Chain Analyzer + SPX Deep Premium templates
+ * OPTION-CHAIN-TEMPLATES: Option-Chain-Template 1 + Option-Chain-Template 2
  * SLACK: All templates preserved for Slack bot functionality
  */
 
@@ -262,10 +262,10 @@ export const SharedTemplates = {
     }
   },
 
-  // ===== TERMINAL TEMPLATES =====
+  // ===== OPTION-CHAIN-TEMPLATES =====
   
   // ██████████████████████████████████████████████████████████████████████████████
-  // ███ TERMINAL TEMPLATE #1: OPTION CHAIN ANALYZER ███
+  // ███ OPTION-CHAIN-TEMPLATE 1: OPTION CHAIN ANALYZER ███
   // ██████████████████████████████████████████████████████████████████████████████
   //
   // 🎯 WHEN THIS GETS CALLED:
@@ -288,7 +288,7 @@ export const SharedTemplates = {
   //
   // 💡 OUTPUT STYLE: Context-aware table with surrounding strikes
   //
-  optionChainAnalyzer: {
+  optionChainTemplate1: {
     terminal: {
       // 📊 HEADER: Shows SPX price, DTE, expiration, total puts
       // Called once at the top of every option chain analysis
@@ -351,7 +351,7 @@ export const SharedTemplates = {
   },
 
   // ██████████████████████████████████████████████████████████████████████████████
-  // ███ TERMINAL TEMPLATE #2: SPX DEEP PREMIUM SCANNER ███
+  // ███ OPTION-CHAIN-TEMPLATE 2: SPX DEEP PREMIUM SCANNER ███
   // ██████████████████████████████████████████████████████████████████████████████
   //
   // 🎯 WHEN THIS GETS CALLED:
@@ -374,56 +374,28 @@ export const SharedTemplates = {
   //
   // 💡 OUTPUT STYLE: Trading-focused with execution summary and safety meter
   //
-  spxDeepPremium: {
+  optionChainTemplate2: {
     terminal: {
-      // 📊 HEADER: Shows SPX price, DTE, expiration, and search criteria
-      // Called once at the top of every SQL query result
+      // 📊 HEADER: Minimal header
       header: (spxPrice, dte, expDate, dayNote, criteria) => {
-        const dteText = dte === 0 ? '0DTE (today)' : `${dte}DTE`;
-        return [
-          `📈 SPX: $${spxPrice.toFixed(2)}`,
-          `📅 Analyzing ${dteText} options`,
-          `📅 Expiration: ${expDate} ${dayNote}`,
-          `📊 Criteria: ${criteria}`
-        ].join('\n');
+        return `SPX: $${spxPrice.toFixed(2)} | ${dte}DTE | ${criteria}`;
       },
       
-      // 📋 CHAIN HEADER: Table header for option chain results
-      chainHeader: () => `📋 OPTION CHAIN:\nStrike  Bid   Ask   Points Out\n──────────────────────────────`,
+      // 📋 CHAIN HEADER: Clean grid header
+      chainHeader: () => `Strike\tBid\tAsk\tDistance\tStatus\n${'─'.repeat(40)}`,
       
-      // 📊 CHAIN ROW: Each option row with strike, bid, ask, distance, and emoji markers
-      // Markers: ✅ = qualifies, 💰 = ITM/high premium, 🎯 = target
-      chainRow: (strike, bid, ask, distance, marker = '') => {
-        const strikeStr = strike.toString().padEnd(6);
-        const bidStr = bid.toFixed(2).padStart(5);
-        const askStr = ask.toFixed(2).padStart(5);
-        const distanceStr = distance.toFixed(0).padStart(4);
-        return `${marker} ${strikeStr} ${bidStr} ${askStr} ${distanceStr}`;
+      // 📊 CHAIN ROW: Each option row with strike, bid, ask, distance, and QUALIFIES/DOESN'T QUALIFY
+      // Status: "QUALIFIES" = meets all criteria, "DOESN'T QUALIFY" = fails criteria, "CONTEXT" = shown for reference
+      chainRow: (strike, bid, ask, distance, status) => {
+        return `${strike}\t$${bid.toFixed(2)}\t$${ask.toFixed(2)}\t${distance.toFixed(0)} pts\t${status}`;
       },
       
-      // 🎯 EXECUTION HEADER: Header for recommended trade section
-      executionHeader: () => '🎯 EXECUTION SUMMARY:',
+      // 🎯 EXECUTION DATA: Minimal execution info when qualifies
+      execution: (strike, premium, credit, distance, safety) => 
+        `${strike}P | $${premium.toFixed(2)} | $${credit.toFixed(0)} | ${distance.toFixed(0)}pts | ${safety}`,
       
-      // 🎯 SELL ORDER: Shows recommended sell order (quantity, symbol, strike)
-      sell: (quantity, symbol, strike) => `🎯 SELL ${quantity}x ${symbol} ${strike}P`,
-      
-      // 💰 PREMIUM: Shows premium per contract
-      premium: (amount) => `💰 Premium: $${amount.toFixed(2)}`,
-      
-      // 📊 CREDIT: Shows total credit (premium × 100)
-      credit: (amount) => `📊 Credit: $${amount.toFixed(0)}`,
-      
-      // 📏 DISTANCE: Shows points away from current SPX price
-      distance: (points) => `📏 Distance: ${points.toFixed(0)} points from SPX`,
-      
-      // 🛡️ SAFETY METER: Risk assessment with emoji and level
-      safety: (emoji, level) => `🛡️ Safety Meter: ${emoji} ${level}`,
-      
-      // ✅ YES: Trade recommendation positive
-      yes: () => '✅ YES',
-      
-      // ❌ NO: Trade recommendation negative
-      no: () => '❌ NO'
+      // ✅ RESULT: Simple yes/no
+      result: (qualifies) => qualifies ? 'QUALIFIES' : 'NO TRADES'
     }
   },
 
@@ -476,11 +448,11 @@ export const SharedTemplates = {
   }
 };
 
-// Template Presets - TERMINAL TEMPLATES AVAILABLE
+// Template Presets - OPTION-CHAIN-TEMPLATES AVAILABLE  
 export const TemplatePresets = {
-  // TERMINAL TEMPLATES
-  optionChainAnalyzer: SharedTemplates.optionChainAnalyzer,
-  spxDeepPremium: SharedTemplates.spxDeepPremium,
+  // OPTION-CHAIN-TEMPLATES
+  optionChainTemplate1: SharedTemplates.optionChainTemplate1,  // OPTION-CHAIN-TEMPLATE 1
+  optionChainTemplate2: SharedTemplates.optionChainTemplate2,  // OPTION-CHAIN-TEMPLATE 2
   
   // Slack presets remain unchanged
   spxDeepPremiumSlack: {

@@ -93,7 +93,7 @@ async function analyzeOptionChain(dte = 1, targetBid = null) {
     }
     
     if (!expiration) {
-      console.log(TemplatePresets.optionChainAnalyzer.errors.noExpiration(dte));
+      console.log(TemplatePresets.optionChainTemplate1.errors.noExpiration(dte));
       return;
     }
     
@@ -105,15 +105,15 @@ async function analyzeOptionChain(dte = 1, targetBid = null) {
     const expDateFormatted = expDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     
     // Print header using template
-    console.log(TemplatePresets.optionChainAnalyzer.terminal.header(spot, dte, expDateFormatted, puts.length));
+    console.log(TemplatePresets.optionChainTemplate1.terminal.header(spot, dte, expDateFormatted, puts.length));
     
     if (targetBid) {
       // Find specific bid amount
       const targetStrikes = puts.filter(p => p.bid === targetBid).sort((a, b) => b.strike - a.strike);
       
       if (targetStrikes.length === 0) {
-        console.log('\n' + TemplatePresets.optionChainAnalyzer.terminal.searchHeader(targetBid));
-        console.log(TemplatePresets.optionChainAnalyzer.terminal.noResults(targetBid));
+        console.log('\n' + TemplatePresets.optionChainTemplate1.terminal.searchHeader(targetBid));
+        console.log(TemplatePresets.optionChainTemplate1.terminal.noResults(targetBid));
         
         // Find nearby bids
         const nearby = puts.filter(p => Math.abs(p.bid - targetBid) <= 0.01 && p.bid > 0)
@@ -121,16 +121,16 @@ async function analyzeOptionChain(dte = 1, targetBid = null) {
           .slice(0, 10);
         
         if (nearby.length > 0) {
-          console.log('\n' + TemplatePresets.optionChainAnalyzer.terminal.nearbyHeader(targetBid));
+          console.log('\n' + TemplatePresets.optionChainTemplate1.terminal.nearbyHeader(targetBid));
           
           nearby.forEach(put => {
             const distance = Math.round(spot - put.strike);
-            console.log(TemplatePresets.optionChainAnalyzer.terminal.dataRow(put.strike, put.bid, put.ask, distance));
+            console.log(TemplatePresets.optionChainTemplate1.terminal.dataRow(put.strike, put.bid, put.ask, distance));
           });
         }
       } else {
         // NEW CONTEXT-AWARE DISPLAY
-        console.log('\n' + TemplatePresets.optionChainAnalyzer.terminal.contextHeader(targetBid));
+        console.log('\n' + TemplatePresets.optionChainTemplate1.terminal.contextHeader(targetBid));
         
         // Show a few strikes with the next higher bid level for context
         const highestTargetStrike = Math.max(...targetStrikes.map(p => p.strike));
@@ -145,7 +145,7 @@ async function analyzeOptionChain(dte = 1, targetBid = null) {
         
         contextAbove.forEach(put => {
           const distance = Math.round(spot - put.strike);
-          console.log(TemplatePresets.optionChainAnalyzer.terminal.contextRow(put.strike, put.bid, put.ask, distance, 'Context'));
+          console.log(TemplatePresets.optionChainTemplate1.terminal.contextRow(put.strike, put.bid, put.ask, distance, 'Context'));
         });
         
         // Show all target strikes, mark the lowest as SUGGESTED
@@ -153,7 +153,7 @@ async function analyzeOptionChain(dte = 1, targetBid = null) {
         targetStrikes.forEach(put => {
           const distance = Math.round(spot - put.strike);
           const note = put.strike === lowestTargetStrike ? '← SUGGESTED' : '← TARGET';
-          console.log(TemplatePresets.optionChainAnalyzer.terminal.contextRow(put.strike, put.bid, put.ask, distance, note));
+          console.log(TemplatePresets.optionChainTemplate1.terminal.contextRow(put.strike, put.bid, put.ask, distance, note));
         });
         
         // Show proof: the immediate next strike down
@@ -163,7 +163,7 @@ async function analyzeOptionChain(dte = 1, targetBid = null) {
         
         if (nextLowerStrike) {
           const distance = Math.round(spot - nextLowerStrike.strike);
-          console.log(TemplatePresets.optionChainAnalyzer.terminal.contextRow(nextLowerStrike.strike, nextLowerStrike.bid, nextLowerStrike.ask, distance, '← PROOF (Next Lower)'));
+          console.log(TemplatePresets.optionChainTemplate1.terminal.contextRow(nextLowerStrike.strike, nextLowerStrike.bid, nextLowerStrike.ask, distance, '← PROOF (Next Lower)'));
         }
         
         // Show a couple more strikes below for full context  
@@ -174,7 +174,7 @@ async function analyzeOptionChain(dte = 1, targetBid = null) {
         
         contextBelow.forEach(put => {
           const distance = Math.round(spot - put.strike);
-          console.log(TemplatePresets.optionChainAnalyzer.terminal.contextRow(put.strike, put.bid, put.ask, distance, 'Context'));
+          console.log(TemplatePresets.optionChainTemplate1.terminal.contextRow(put.strike, put.bid, put.ask, distance, 'Context'));
         });
         
         // New 2-row summary section
@@ -206,12 +206,12 @@ async function analyzeOptionChain(dte = 1, targetBid = null) {
         const bidKey = bid.toFixed(2);
         const count = bidLevels[bidKey] ? bidLevels[bidKey].length : 0;
         const furthest = bidLevels[bidKey] ? bidLevels[bidKey].reduce((min, p) => p.strike < min.strike ? p : min) : null;
-        console.log(TemplatePresets.optionChainAnalyzer.terminal.bidLevelSummary(bid, count, furthest, spot));
+        console.log(TemplatePresets.optionChainTemplate1.terminal.bidLevelSummary(bid, count, furthest, spot));
       }
     }
     
   } catch (error) {
-    console.error(TemplatePresets.optionChainAnalyzer.errors.apiError(error.message));
+    console.error(TemplatePresets.optionChainTemplate1.errors.apiError(error.message));
     process.exit(1);
   }
 }
